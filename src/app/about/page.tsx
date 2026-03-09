@@ -151,7 +151,7 @@ export default function AboutPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-8">
                 <p className="text-6xl font-bold text-white mb-4">
-                  2019
+                  2022
                 </p>
                 <p className="text-white/80">
                   Founded in Pittsburgh, PA
