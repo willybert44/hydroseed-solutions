@@ -75,7 +75,7 @@ export default function Home() {
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="/images/photos/AdobeStock_215696959.mp4" type="video/mp4" />
+          <source src="/images/photos/bg-video-compressed.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-black/80 backdrop-blur-[2px]" />
 
@@ -392,7 +392,7 @@ export default function Home() {
               { src: "/images/logos/0gmNY1vYmkOPrtcW2CUpj7Ddk.avif", alt: "Partner company", h: "h-20" },
               { src: "/images/logos/58e0b7_c81d2aa8c7344caf8dd5ebc1fc09cfaa~mv2.avif", alt: "Partner company", h: "h-20" },
             ].map((logo) => (
-              <div key={logo.src} className="relative opacity-70 hover:opacity-100 transition-opacity">
+              <div key={logo.src} className="relative flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity">
                 <Image
                   src={logo.src}
                   alt={logo.alt}
@@ -402,6 +402,15 @@ export default function Home() {
                 />
               </div>
             ))}
+            <div className="text-2xl sm:text-3xl font-bold opacity-70 hover:opacity-100 transition-opacity text-center">
+              Lutterman Excavating
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold opacity-70 hover:opacity-100 transition-opacity text-center">
+              Inca Stone
+            </div>
+            <div className="text-xl sm:text-2xl font-medium italic opacity-50 text-center">
+              &amp; more...
+            </div>
           </motion.div>
         </div>
       </section>
