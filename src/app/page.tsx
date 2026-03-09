@@ -370,12 +370,12 @@ export default function Home() {
 
       {/* ─── Trusted Partners ─── */}
       <section className="py-20 sp border-t border-border">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
-            className="text-xs font-semibold tracking-widest text-brand uppercase text-center mb-12"
+            className="text-sm font-bold tracking-widest text-brand uppercase text-center mb-16"
           >
             Companies We&apos;ve Partnered With
           </motion.p>
@@ -384,20 +384,20 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ delay: 0.1 }}
-            className="flex flex-wrap items-center justify-center gap-12 md:gap-16"
+            className="flex flex-wrap items-center justify-center gap-16 md:gap-24"
           >
             {[
-              { src: "/images/logos/WCHA_logo-white.png", alt: "WCHA", h: "h-12" },
-              { src: "/images/logos/Credible-Pool-Spa-Logo.png", alt: "Credible Pool & Spa", h: "h-14" },
-              { src: "/images/logos/0gmNY1vYmkOPrtcW2CUpj7Ddk.avif", alt: "Partner company", h: "h-12" },
-              { src: "/images/logos/58e0b7_c81d2aa8c7344caf8dd5ebc1fc09cfaa~mv2.avif", alt: "Partner company", h: "h-12" },
+              { src: "/images/logos/WCHA_logo-white.png", alt: "WCHA", h: "h-20" },
+              { src: "/images/logos/Credible-Pool-Spa-Logo.png", alt: "Credible Pool & Spa", h: "h-24" },
+              { src: "/images/logos/0gmNY1vYmkOPrtcW2CUpj7Ddk.avif", alt: "Partner company", h: "h-20" },
+              { src: "/images/logos/58e0b7_c81d2aa8c7344caf8dd5ebc1fc09cfaa~mv2.avif", alt: "Partner company", h: "h-20" },
             ].map((logo) => (
               <div key={logo.src} className="relative opacity-70 hover:opacity-100 transition-opacity">
                 <Image
                   src={logo.src}
                   alt={logo.alt}
-                  width={160}
-                  height={80}
+                  width={240}
+                  height={120}
                   className={`${logo.h} w-auto object-contain`}
                 />
               </div>
