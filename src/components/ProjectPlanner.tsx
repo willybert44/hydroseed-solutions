@@ -346,21 +346,38 @@ export default function ProjectPlanner() {
               <h3 className="text-2xl font-bold mb-2">
                 How big is the area?
               </h3>
-              <p className="text-text-secondary mb-4">
-                Enter the approximate size of the area to be
-                hydroseeded. Don&apos;t worry about being exact — we&apos;ll
-                verify on site.
+              <p className="text-text-secondary mb-6">
+                Let&apos;s start by getting the approximate size of your project. We can calculate it for you using our satellite map tool.
               </p>
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-brand/5 border border-brand/10 mb-6">
-                <Info className="w-4 h-4 text-brand shrink-0 mt-0.5" />
-                <p className="text-sm text-text-secondary">
-                  <strong className="text-text-primary">Not sure of the exact size?</strong>{" "}
-                  That&apos;s totally fine. A rough estimate works — or use the map tool below to draw your area and we&apos;ll calculate it for you.
-                </p>
+
+              {/* Primary Method: Map Measure */}
+              <button
+                onClick={() => setShowMap(true)}
+                className="w-full flex items-center gap-4 px-6 py-6 mb-6 rounded-2xl border-2 border-brand bg-brand/5 hover:bg-brand/10 hover:border-brand-light transition-all group shadow-sm text-left"
+              >
+                <div className="w-12 h-12 shrink-0 rounded-full bg-brand/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <MapPin className="w-6 h-6 text-brand" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-lg font-bold text-text-primary group-hover:text-brand transition-colors">
+                    {form.squareFeet > 0 ? "Edit Map Measurement" : "Measure with Satellite Map"}
+                  </p>
+                  <p className="text-sm text-text-secondary">
+                    {form.squareFeet > 0 
+                      ? "Update your drawn property boundaries" 
+                      : "Draw your area on the map and we'll calculate it"}
+                  </p>
+                </div>
+              </button>
+
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-sm text-text-muted font-medium uppercase tracking-wider">or enter manually</span>
+                <div className="h-px flex-1 bg-border" />
               </div>
 
               {/* Unit toggle */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex justify-start gap-2 mb-4">
                 {(["sqft", "acres"] as const).map((u) => (
                   <button
                     key={u}
@@ -375,8 +392,8 @@ export default function ProjectPlanner() {
                     }}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                       areaUnit === u
-                        ? "bg-brand text-surface"
-                        : "border border-border text-text-secondary hover:border-brand/40"
+                        ? "bg-surface-raised text-text-primary border border-border"
+                        : "text-text-secondary hover:bg-surface-overlay"
                     }`}
                   >
                     {u === "sqft" ? "Square Feet" : "Acres"}
@@ -384,7 +401,8 @@ export default function ProjectPlanner() {
                 ))}
               </div>
 
-              <div className="relative">
+              {/* Manual Input */}
+              <div className="relative mb-2">
                 <input
                   type="number"
                   min={0}
@@ -404,30 +422,24 @@ export default function ProjectPlanner() {
                   {areaUnit === "acres" ? "acres" : "sq ft"}
                 </span>
               </div>
+              
+              {/* Show calculated totals/rates */}
               {form.squareFeet > 0 && (
-                <p className="mt-3 text-sm text-text-muted">
-                  {areaUnit === "acres" && <>≈ {form.squareFeet.toLocaleString()} sq ft · </>}
-                  Base rate: ${getBaseRate(form.squareFeet).toFixed(2)}/sqft (includes seed, tackifier, starter fertilizer &amp; 70/30 wood fiber/cellulose mulch)
-                </p>
+                <div className="mt-4 p-4 rounded-xl bg-brand/5 border border-brand/20 flex flex-col gap-1">
+                  <p className="text-sm font-medium text-text-primary">
+                    Total: <span className="font-bold text-brand">{form.squareFeet.toLocaleString()} sq ft</span>
+                  </p>
+                  <p className="text-sm text-text-secondary">
+                    {areaUnit === "acres" && <>≈ {(form.squareFeet / 43560).toFixed(2)} acres · </>}
+                    Base price estimate: <span className="font-medium">${getBaseRate(form.squareFeet).toFixed(2)}/sqft</span>
+                  </p>
+                  <p className="text-xs text-text-muted mt-1">
+                    (includes seed, tackifier, starter fertilizer & 70/30 wood fiber/cellulose mulch)
+                  </p>
+                </div>
               )}
 
-              <div className="mt-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-text-muted">or</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <button
-                onClick={() => setShowMap(true)}
-                className="mt-6 w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border border-border bg-surface-overlay hover:border-brand hover:bg-brand/5 transition-all group"
-              >
-                <MapPin className="w-5 h-5 text-brand" />
-                <div className="text-left">
-                  <p className="font-semibold group-hover:text-brand transition-colors">Not sure? Measure on a map</p>
-                  <p className="text-xs text-text-muted">Draw your area on Google satellite view</p>
-                </div>
-              </button>
-
+              {/* Map Measure Modal */}
               {showMap && (
                 <Suspense fallback={null}>
                   <SiteMeasure
