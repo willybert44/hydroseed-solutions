@@ -50,6 +50,7 @@ interface RFQData {
   specifications: string;
   timeline: string;
   additionalNotes: string;
+  smsOptIn: boolean;
 }
 
 const projectTypeOptions: { value: ProjectType; label: string }[] = [
@@ -100,6 +101,7 @@ export default function CommercialRFQ() {
     specifications: "",
     timeline: "",
     additionalNotes: "",
+    smsOptIn: false,
   });
 
   const update = (partial: Partial<RFQData>) => setForm({ ...form, ...partial });
@@ -135,46 +137,39 @@ export default function CommercialRFQ() {
     if (step > 0) setStep(step - 1);
   };
 
-  const handleSubmit = () => {
-    // Build mailto or form submission
-    const sqft = form.areaUnit === "acres" ? Math.round(form.estimatedAcreage * 43560) : form.estimatedAcreage;
-    const acreage = form.areaUnit === "acres" ? form.estimatedAcreage : parseFloat((form.estimatedAcreage / 43560).toFixed(2));
-    const types = form.projectTypes
-      .map((t) => projectTypeOptions.find((o) => o.value === t)?.label)
-      .join(", ");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const subject = encodeURIComponent(`RFQ: ${form.projectName || "New Project"} — ${form.companyName}`);
-    const body = encodeURIComponent(
-      `COMMERCIAL RFQ — HYDROSEED SOLUTIONS\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `COMPANY\n` +
-      `Company: ${form.companyName}\n` +
-      `Contact: ${form.contactName}\n` +
-      `Email: ${form.email}\n` +
-      `Phone: ${form.phone || "Not provided"}\n\n` +
-      `PROJECT\n` +
-      `Project Name: ${form.projectName || "Not specified"}\n` +
-      `Service Types: ${types}\n` +
-      `Location: ${form.projectLocation || "Not specified"}\n` +
-      `Estimated Size: ${acreage} acres (${sqft.toLocaleString()} sq ft)\n` +
-      `Timeline: ${form.timeline || "Not specified"}\n\n` +
-      `SPECIFICATIONS\n` +
-      `${form.specifications || "None provided"}\n\n` +
-      `ADDITIONAL NOTES\n` +
-      `${form.additionalNotes || "None"}\n` +
-      (planFiles.length > 0
-        ? `\nATTACHED FILES (please reply to this email with attachments)\n` +
-          planFiles.map((pf) => `• ${pf.file.name} (${(pf.file.size / 1024 / 1024).toFixed(1)} MB)`).join("\n") +
-          "\n"
-        : "")
-    );
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // Send data to backend endpoint
+      const response = await fetch('/api/quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'Commercial RFQ',
+          ...form,
+          // Handle specific serialization if needed, currently sending raw form state
+        }),
+      });
 
-    trackEvent("generate_lead", { currency: "USD", value: 0 });
-    // Replace with your real conversion label:
-    trackConversion(process.env.NEXT_PUBLIC_AW_RFQ_LABEL ?? "");
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
 
-    window.location.href = `mailto:hello@hydroseed.solutions?subject=${subject}&body=${body}`;
-    setSubmitted(true);
+      trackEvent("generate_lead", { currency: "USD", value: 0 });
+      // Replace with your real conversion label:
+      trackConversion(process.env.NEXT_PUBLIC_AW_RFQ_LABEL ?? "");
+
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Submission error:', error);
+      alert('There was an issue submitting your request. Please try again or email us directly.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -212,6 +207,7 @@ export default function CommercialRFQ() {
               specifications: "",
               timeline: "",
               additionalNotes: "",
+              smsOptIn: false,
             });
           }}
           className="text-sm text-text-muted hover:text-text-secondary transition-colors"
@@ -338,6 +334,18 @@ export default function CommercialRFQ() {
                     placeholder="you@company.com"
                     className="w-full px-5 py-4 rounded-2xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
                   />
+                </div>
+                <div className="mt-4 flex items-start gap-3 bg-surface-overlay p-4 rounded-xl border border-border">
+                  <input
+                    type="checkbox"
+                    id="smsOptIn"
+                    checked={form.smsOptIn}
+                    onChange={(e) => update({ smsOptIn: e.target.checked })}
+                    className="mt-1 w-4 h-4 rounded border-border text-brand focus:ring-brand bg-surface"
+                  />
+                  <label htmlFor="smsOptIn" className="text-[11px] text-text-muted leading-relaxed cursor-pointer">
+                    <strong>I agree to receive SMS text messages</strong> from Hydroseed Solutions regarding my quote request. Message and data rates may apply. Message frequency varies. Reply HELP for help or STOP to cancel. Read our <a href="/privacy" className="underline hover:text-text-primary">Privacy Policy</a> and <a href="/terms" className="underline hover:text-text-primary">Terms of Service</a>.
+                  </label>
                 </div>
               </div>
             </div>

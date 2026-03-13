@@ -117,10 +117,16 @@ export default function Footer() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-text-muted">
-            &copy; {new Date().getFullYear()} Hydroseed Solutions. All rights
-            reserved.
-          </p>
+          <div className="flex flex-col md:flex-row items-center gap-2 md:gap-6">
+            <p className="text-xs text-text-muted">
+              &copy; {new Date().getFullYear()} Hydroseed Solutions. All rights
+              reserved.
+            </p>
+            <div className="flex items-center gap-4 text-xs text-text-muted">
+              <Link href="/privacy" className="hover:text-brand transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-brand transition-colors">Terms of Service</Link>
+            </div>
+          </div>
           <p className="text-xs text-text-muted">Pittsburgh, PA</p>
         </div>
       </div>

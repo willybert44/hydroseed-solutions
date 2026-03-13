@@ -414,6 +414,33 @@ export default async function SuburbPage({
         </div>
       </section>
 
+      {/* ─── Top Services in [Suburb] ─── */}
+      <section className="py-24 sp border-t border-border">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-2xl font-bold mb-6">
+            More Services in {suburb.name}
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { slug: 'lawn-installation', title: 'Lawn Installation' },
+              { slug: 'grass-seeding', title: 'Grass Seeding' },
+              { slug: 'lawn-seeding', title: 'Lawn Seeding' },
+              { slug: 'new-lawn-planting', title: 'New Lawn Planting' },
+            ].map((service) => (
+              <Link
+                key={service.slug}
+                href={`/areas/${suburb.slug}/${service.slug}`}
+                className="p-4 rounded-xl border border-border bg-surface hover:border-brand hover:shadow-[0_0_0_1px_rgba(205,249,58,0.2)] transition-all group flex items-center justify-between"
+              >
+                <span className="font-medium text-text-secondary group-hover:text-brand transition-colors">
+                  {service.title}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Nearby Areas ─── */}
       {neighbors.length > 0 && (
         <section className="py-24 sp border-t border-border">

@@ -3,6 +3,13 @@
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { trackConversion, trackEvent } from "@/lib/gtag";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import {
   Ruler,
   Mountain,
@@ -118,10 +125,68 @@ const amendmentOptions: { value: Amendment; label: string; desc: string }[] = [
   { value: "compost", label: "Compost / Organic Matter", desc: "+$0.025/sqft" },
 ];
 
+/* ─── Stripe Init ─── */
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+/* ─── Inline Checkout Form ─── */
+function CheckoutForm({ amount, onCancel }: { amount: number; onCancel: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsProcessing(true);
+    setMessage(null);
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/get-seeded?success=true`,
+      },
+    });
+
+    if (error) {
+      setMessage(error.message ?? "An unexpected error occurred.");
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full">
+      <PaymentElement options={{ layout: "accordion" }} />
+      {message && <div className="text-red-500 text-sm mt-4 font-medium">{message}</div>}
+      <button
+        disabled={isProcessing || !stripe || !elements}
+        className="w-full mt-6 py-3 rounded-xl bg-brand text-surface font-semibold hover:bg-brand-light transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {isProcessing ? (
+          <span className="inline-block animate-spin h-5 w-5 border-2 border-surface border-t-transparent rounded-full"></span>
+        ) : (
+          `Pay Deposit ($${amount.toLocaleString()})`
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={isProcessing}
+        className="w-full mt-3 py-2 text-sm text-text-muted hover:text-text-primary transition-colors underline disabled:opacity-60"
+      >
+        Cancel and go back
+      </button>
+    </form>
+  );
+}
+
 /* ─── Component ─── */
 export default function ProjectPlanner() {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [feeExpanded, setFeeExpanded] = useState(false);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [areaUnit, setAreaUnit] = useState<AreaUnit>("sqft");
   const [areaInput, setAreaInput] = useState<number>(0);
@@ -170,6 +235,45 @@ export default function ProjectPlanner() {
         ? prev.amendments.filter((x) => x !== a)
         : [...prev.amendments, a],
     }));
+  };
+
+  const handleDepositCheckout = async () => {
+    setIsStartingCheckout(true);
+
+    try {
+      const depositAmount = Math.round(estimate.base * 0.15);
+      const response = await fetch("/api/stripe/deposit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: depositAmount,
+          estimateBase: estimate.base,
+          squareFeet: form.squareFeet,
+          slope: form.slope,
+          soil: form.soil,
+          sun: form.sun,
+          amendments: form.amendments,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Unable to start checkout");
+      }
+
+      const payload: { clientSecret?: string } = await response.json();
+      if (!payload.clientSecret) {
+        throw new Error("Checkout session secret missing");
+      }
+
+      setClientSecret(payload.clientSecret);
+    } catch (error: any) {
+      console.error("Checkout error:", error);
+      alert(`Could not start payment: ${error.message}`);
+      setIsStartingCheckout(false);
+    }
   };
 
   // Track conversion when user reaches the estimate step
@@ -627,50 +731,75 @@ export default function ProjectPlanner() {
                 </p>
               </div>
 
-              {/* Two Paths */}
-              <div className="grid sm:grid-cols-2 gap-4 mb-8">
-                {/* Path 1: Deposit & Book */}
-                <div className="p-6 rounded-2xl border border-border bg-surface-raised">
-                  <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
-                    <CreditCard className="w-5 h-5 text-brand" />
-                  </div>
-                  <h4 className="font-bold mb-2">Book Your Project</h4>
-                  <p className="text-sm text-text-secondary mb-4">
-                    Lock in your spot with a 15% deposit (${Math.round(estimate.base * 0.15).toLocaleString()}).
-                    Credited fully toward your project total. We&apos;ll
-                    schedule you within 5 business days.
+              {/* Inline Checkout vs Two Paths */}
+              {clientSecret ? (
+                <div className="w-full bg-surface border border-border rounded-xl p-4 sm:p-6 mb-8 shadow-sm">
+                  <h4 className="text-xl font-bold mb-4">Pay 15% Deposit Online</h4>
+                  <p className="text-sm text-text-secondary mb-6">
+                    A refundable deposit locks your project into our schedule and begins the final scoping process.
                   </p>
-                  <button
-                    className="w-full py-3 rounded-xl bg-brand text-surface font-semibold hover:bg-brand-light transition-colors text-sm"
-                    onClick={() =>
-                      alert("Deposit payment integration coming soon!")
-                    }
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: {
+                        theme: 'stripe',
+                        variables: {
+                          colorPrimary: '#00c898',
+                        },
+                      },
+                    }}
                   >
-                    Pay Deposit & Book →
-                  </button>
+                    <CheckoutForm 
+                      amount={Math.round(estimate.low * 0.15)} 
+                      onCancel={() => setClientSecret(null)} 
+                    />
+                  </Elements>
                 </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                  {/* Path 1: Deposit & Book */}
+                  <div className="p-6 rounded-2xl border border-border bg-surface-raised">
+                    <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
+                      <CreditCard className="w-5 h-5 text-brand" />
+                    </div>
+                    <h4 className="font-bold mb-2">Book Your Project</h4>
+                    <p className="text-sm text-text-secondary mb-4">
+                      Lock in your spot with a 15% deposit (${Math.round(estimate.base * 0.15).toLocaleString()}).
+                      Credited fully toward your project total. We&apos;ll
+                      schedule you within 5 business days.
+                    </p>
+                    <button
+                      className="w-full py-3 rounded-xl bg-brand text-surface font-semibold hover:bg-brand-light transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      onClick={handleDepositCheckout}
+                      disabled={isStartingCheckout}
+                    >
+                      {isStartingCheckout ? "Starting secure checkout..." : "Pay Deposit & Book ->"}
+                    </button>
+                  </div>
 
-                {/* Path 2: Site Consultation */}
-                <div className="p-6 rounded-2xl border border-border bg-surface-raised">
-                  <div className="w-10 h-10 rounded-xl bg-surface-overlay flex items-center justify-center mb-4">
-                    <Calendar className="w-5 h-5 text-text-secondary" />
+                  {/* Path 2: Site Consultation */}
+                  <div className="p-6 rounded-2xl border border-border bg-surface-raised">
+                    <div className="w-10 h-10 rounded-xl bg-surface-overlay flex items-center justify-center mb-4">
+                      <Calendar className="w-5 h-5 text-text-secondary" />
+                    </div>
+                    <h4 className="font-bold mb-2">Site Consultation First</h4>
+                    <p className="text-sm text-text-secondary mb-4">
+                      Prefer to meet first? Book a $45 on-site consultation.
+                      We&apos;ll walk your property, test your soil, and finalize
+                      your plan in person.
+                    </p>
+                    <a
+                      href="https://hydroseed.zohobookings.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full py-3 rounded-xl border border-border text-center font-semibold text-text-secondary hover:border-brand hover:text-brand transition-colors text-sm"
+                    >
+                      Book Consultation – $45
+                    </a>
                   </div>
-                  <h4 className="font-bold mb-2">Site Consultation First</h4>
-                  <p className="text-sm text-text-secondary mb-4">
-                    Prefer to meet first? Book a $45 on-site consultation.
-                    We&apos;ll walk your property, test your soil, and finalize
-                    your plan in person.
-                  </p>
-                  <a
-                    href="https://hydroseed.zohobookings.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full py-3 rounded-xl border border-border text-center font-semibold text-text-secondary hover:border-brand hover:text-brand transition-colors text-sm"
-                  >
-                    Book Consultation – $45
-                  </a>
                 </div>
-              </div>
+              )}
 
               {/* Fee Explanation */}
               <div className="rounded-2xl border border-border bg-surface-overlay overflow-hidden">
