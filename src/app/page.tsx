@@ -66,24 +66,24 @@ export default function Home() {
   return (
     <>
       {/* ─── Hero ─── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden sp">
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Background Video */}
         <video
           autoPlay
           muted
           loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover z-0"
         >
           <source src="/images/photos/bg-video-compressed.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] z-0" />
 
-        <div className="hero-glow top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 opacity-40" />
-        <div className="hero-glow bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 opacity-20" />
+        <div className="hero-glow top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 opacity-40 z-0" />
+        <div className="hero-glow bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 opacity-20 z-0" />
 
         <div
-          className="absolute inset-0 opacity-[0.03]"
+          className="absolute inset-0 opacity-[0.03] z-0"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)",
