@@ -48,39 +48,6 @@ export default function GetSeededPage() {
               : "Tell us about your project and we'll respond with a formal quote within 1 business day."}
           </motion.p>
         </div>
-
-        {/* Hero Photo Strip */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-10 w-full max-w-3xl mx-auto grid grid-cols-3 gap-3"
-        >
-          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border">
-            <Image
-              src="/images/photos/photo-hydroseed-lawn-backyard-landscaping.jpg"
-              alt="Completed hydroseeding project"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border">
-            <Image
-              src="/images/photos/photo-construction-site-hydroseeding-2024-05-07.jpg"
-              alt="Commercial hydroseeding project"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border">
-            <Image
-              src="/images/photos/photo-hydroseeding-lawn-2025-10-03.jpg"
-              alt="Fresh hydroseeded lawn"
-              fill
-              className="object-cover"
-            />
-          </div>
-        </motion.div>
       </section>
 
       {/* ─── How It Works (visible before choosing a flow) ─── */}
@@ -197,6 +164,41 @@ export default function GetSeededPage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </section>
+
+      {/* Hero Photo Strip (Moved below actionable items) */}
+      <section className="px-6 pb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="w-full max-w-3xl mx-auto grid grid-cols-3 gap-3"
+        >
+          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border mt-3">
+            <Image
+              src="/images/photos/photo-hydroseed-lawn-backyard-landscaping.jpg"
+              alt="Completed hydroseeding project"
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border mt-3">
+            <Image
+              src="/images/photos/photo-construction-site-hydroseeding-2024-05-07.jpg"
+              alt="Commercial hydroseeding project"
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-border mt-3">
+            <Image
+              src="/images/photos/photo-hydroseeding-lawn-2025-10-03.jpg"
+              alt="Fresh hydroseeded lawn"
+              fill
+              className="object-cover"
+            />
+          </div>
+        </motion.div>
       </section>
 
       {/* ─── Trust section ─── */}
