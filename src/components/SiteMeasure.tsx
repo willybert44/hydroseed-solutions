@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { MapPin, Pencil, RotateCcw, X } from "lucide-react";
+import { MapPin, Pencil, RotateCcw, X, Check } from "lucide-react";
 
 /* ─── Google Maps type helpers ─── */
 declare global {
@@ -61,8 +61,13 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
+
+  const pointsRef = useRef<google.maps.LatLng[]>([]);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
   const polygonRef = useRef<google.maps.Polygon | null>(null);
+  const moveListenerRef = useRef<google.maps.MapsEventListener | null>(null);
+  const clickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
 
   const initMap = useCallback(async () => {
     await loadGoogleMaps();
@@ -79,42 +84,9 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      draggableCursor: 'crosshair', // Provide a visual cue for drawing out of the box
     });
     mapRef.current = map;
-
-    const drawingManager = new google.maps.drawing.DrawingManager({
-      drawingMode: null,
-      drawingControl: false,
-      polygonOptions: {
-        fillColor: "#00c898",
-        fillOpacity: 0.3,
-        strokeColor: "#00c898",
-        strokeWeight: 2,
-        editable: true,
-        draggable: true,
-      },
-    });
-    drawingManager.setMap(map);
-    drawingManagerRef.current = drawingManager;
-
-    google.maps.event.addListener(drawingManager, "polygoncomplete", (polygon: google.maps.Polygon) => {
-      // Remove previous polygon
-      if (polygonRef.current) polygonRef.current.setMap(null);
-      polygonRef.current = polygon;
-
-      const area = computeAreaSqFt(polygon);
-      setMeasuredArea(area);
-      setIsDrawing(false);
-      drawingManager.setDrawingMode(null);
-
-      // Update area on edit
-      google.maps.event.addListener(polygon.getPath(), "set_at", () => {
-        setMeasuredArea(computeAreaSqFt(polygon));
-      });
-      google.maps.event.addListener(polygon.getPath(), "insert_at", () => {
-        setMeasuredArea(computeAreaSqFt(polygon));
-      });
-    });
 
     setMapReady(true);
   }, []);
@@ -140,24 +112,143 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
     });
   }, [mapReady]);
 
-  const startDrawing = () => {
-    if (polygonRef.current) {
-      polygonRef.current.setMap(null);
-      polygonRef.current = null;
-      setMeasuredArea(null);
+  const finishDrawing = useCallback(() => {
+    if (pointsRef.current.length < 3) {
+      alert("Please draw at least 3 points to create an area.");
+      return;
     }
-    drawingManagerRef.current?.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    
+    const map = mapRef.current;
+    if (!map) return;
+    
+    setIsDrawing(false);
+    map.setOptions({ draggableCursor: null });
+    
+    if (moveListenerRef.current) google.maps.event.removeListener(moveListenerRef.current);
+    if (clickListenerRef.current) google.maps.event.removeListener(clickListenerRef.current);
+    if (polylineRef.current) polylineRef.current.setMap(null);
+    
+    markersRef.current.forEach(m => m.setMap(null));
+    
+    const finalPolygon = new google.maps.Polygon({
+      paths: pointsRef.current,
+      map: map,
+      fillColor: "#00c898",
+      fillOpacity: 0.3,
+      strokeColor: "#00c898",
+      strokeWeight: 2,
+      editable: true,
+      draggable: true,
+    });
+    polygonRef.current = finalPolygon;
+    
+    const calculateAndSet = () => setMeasuredArea(computeAreaSqFt(finalPolygon));
+    calculateAndSet();
+    
+    google.maps.event.addListener(finalPolygon.getPath(), "set_at", calculateAndSet);
+    google.maps.event.addListener(finalPolygon.getPath(), "insert_at", calculateAndSet);
+  }, []);
+
+  const startDrawing = () => {
+    resetDrawing();
     setIsDrawing(true);
+    
+    const map = mapRef.current;
+    if (!map) return;
+
+    map.setOptions({ draggableCursor: 'crosshair' });
+    
+    polylineRef.current = new google.maps.Polyline({
+      map: map,
+      strokeColor: "#00c898",
+      strokeWeight: 2,
+      strokeOpacity: 0.8,
+    });
+    
+    clickListenerRef.current = google.maps.event.addListener(map, 'click', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      
+      const pos = e.latLng;
+      pointsRef.current.push(pos);
+      
+      const isFirst = pointsRef.current.length === 1;
+      
+      const marker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: isFirst ? 10 : 5,
+          fillColor: "#00c898",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+        zIndex: isFirst ? 100 : 10
+      });
+      
+      if (isFirst) {
+        marker.addListener('mouseover', () => {
+          if (pointsRef.current.length >= 3) {
+            marker.setIcon({
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 14,
+              fillColor: "#00c898",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+            });
+            marker.setTitle("Click to finish measurements");
+          }
+        });
+        marker.addListener('mouseout', () => {
+          marker.setIcon({
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10, 
+            fillColor: "#00c898",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          });
+          marker.setTitle("");
+        });
+        
+        marker.addListener('click', () => {
+          if (pointsRef.current.length >= 3) {
+            finishDrawing();
+          }
+        });
+      }
+      
+      markersRef.current.push(marker);
+    });
+    
+    moveListenerRef.current = google.maps.event.addListener(map, 'mousemove', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng || pointsRef.current.length === 0) return;
+      
+      const path = [...pointsRef.current, e.latLng];
+      polylineRef.current?.setPath(path);
+    });
   };
 
   const resetDrawing = () => {
-    if (polygonRef.current) {
-      polygonRef.current.setMap(null);
-      polygonRef.current = null;
+    pointsRef.current = [];
+    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current = [];
+    
+    if (polylineRef.current) polylineRef.current.setMap(null);
+    if (polygonRef.current) polygonRef.current.setMap(null);
+    
+    if (moveListenerRef.current) google.maps.event.removeListener(moveListenerRef.current);
+    if (clickListenerRef.current) google.maps.event.removeListener(clickListenerRef.current);
+    
+    const map = mapRef.current;
+    if (map) {
+      map.setOptions({ draggableCursor: null });
     }
+
     setMeasuredArea(null);
     setIsDrawing(false);
-    drawingManagerRef.current?.setDrawingMode(null);
   };
 
   const confirmArea = () => {
@@ -230,18 +321,25 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
 
           {/* Drawing Controls */}
           {mapReady && (
-            <div className="absolute top-4 left-4 flex gap-2">
-              <button
-                onClick={startDrawing}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg transition-colors ${
-                  isDrawing
-                    ? "bg-brand text-surface"
-                    : "bg-surface text-text-primary border border-border hover:border-brand"
-                }`}
-              >
-                <Pencil className="w-4 h-4" />
-                {isDrawing ? "Drawing..." : "Draw Area"}
-              </button>
+            <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+              {!isDrawing && !measuredArea && (
+                <button
+                  onClick={startDrawing}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg transition-colors bg-brand text-surface hover:bg-brand-light"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Start Measuring
+                </button>
+              )}
+              {isDrawing && (
+                <button
+                  onClick={finishDrawing}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg transition-colors bg-brand text-surface hover:bg-brand-light"
+                >
+                  <Check className="w-4 h-4" />
+                  Finish Measurements
+                </button>
+              )}
               {(measuredArea || isDrawing) && (
                 <button
                   onClick={resetDrawing}
@@ -256,8 +354,8 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
 
           {/* Area Result */}
           {measuredArea !== null && (
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-surface/95 backdrop-blur-md rounded-2xl border border-brand/30 p-4 shadow-lg">
-              <div>
+            <div className="absolute bottom-4 left-4 right-4 flex flex-col sm:flex-row items-center gap-4 justify-between bg-surface/95 backdrop-blur-md rounded-2xl border border-brand/30 p-4 shadow-lg">
+              <div className="text-center sm:text-left">
                 <p className="text-xs text-brand font-semibold tracking-wider uppercase">
                   Measured Area
                 </p>
@@ -267,7 +365,7 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
               </div>
               <button
                 onClick={confirmArea}
-                className="px-6 py-3 rounded-xl bg-brand text-surface font-semibold hover:bg-brand-light transition-colors"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-brand text-surface font-semibold hover:bg-brand-light transition-colors"
               >
                 Use This Area
               </button>
@@ -278,7 +376,12 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: SiteMeasureProp
         {/* Instructions */}
         {mapReady && !measuredArea && !isDrawing && (
           <div className="p-4 text-center text-sm text-text-muted border-t border-border">
-            Click &quot;Draw Area&quot; then click points on the map to outline your property. Double-click to finish.
+            Click &quot;Start Measuring&quot; then click points on the map to outline your property.
+          </div>
+        )}
+        {mapReady && isDrawing && (
+          <div className="p-4 text-center text-sm text-brand font-medium border-t border-brand/20 bg-brand/5">
+            Click on the map to draw corners. To finish, click "Finish Measurements" or click your very first starting point.
           </div>
         )}
       </div>
