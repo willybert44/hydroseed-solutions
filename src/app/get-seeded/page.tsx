@@ -235,7 +235,7 @@ function GetSeededContent() {
             >
               <button
                 onClick={() => setFlow("residential")}
-                className="group p-8 rounded-3xl border border-border bg-surface-raised hover:border-brand/40 transition-all text-left"
+                className="group p-8 rounded-3xl glass-card hover:border-brand/40 transition-all text-left"
               >
                 <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-6 group-hover:bg-brand/20 transition-colors">
                   <Home className="w-7 h-7 text-brand" />
@@ -254,7 +254,7 @@ function GetSeededContent() {
 
               <button
                 onClick={() => setFlow("commercial")}
-                className="group p-8 rounded-3xl border border-border bg-surface-raised hover:border-brand/40 transition-all text-left"
+                className="group p-8 rounded-3xl glass-card hover:border-brand/40 transition-all text-left"
               >
                 <div className="w-14 h-14 rounded-2xl bg-surface-overlay flex items-center justify-center mb-6 group-hover:bg-brand/10 transition-colors">
                   <HardHat className="w-7 h-7 text-text-secondary group-hover:text-brand transition-colors" />
@@ -289,7 +289,7 @@ function GetSeededContent() {
                   {flow === "residential" ? "Switch to Commercial RFQ" : "Switch to Residential Estimate"}
                 </button>
               </div>
-              <div className="max-w-3xl mx-auto p-8 md:p-12 rounded-3xl border border-border bg-surface-raised">
+              <div className="max-w-3xl mx-auto">
                 {flow === "residential" ? <ProjectPlanner /> : <CommercialRFQ />}
               </div>
             </motion.div>

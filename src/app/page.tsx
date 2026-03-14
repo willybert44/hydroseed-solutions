@@ -112,7 +112,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border-light text-xs font-medium text-text-secondary mb-8"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-subtle text-xs font-medium text-text-secondary mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
             Pittsburgh&apos;s Premier Hydroseeding Company
@@ -181,7 +181,7 @@ export default function Home() {
 
       {/* ─── Stats ─── */}
       <section className="relative py-24 sp border-t border-border">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -189,7 +189,7 @@ export default function Home() {
               initial="hidden"
               animate="show"
               variants={fadeUp}
-              className="text-center"
+              className="text-center glass-card rounded-2xl p-6 sm:p-8"
             >
               <p className="text-4xl sm:text-5xl font-bold text-gradient">
                 {stat.value}
@@ -255,11 +255,13 @@ export default function Home() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-8">
-                <p className="text-2xl font-bold text-white mb-2">1 Application</p>
-                <p className="text-white/80">
-                  Seed + mulch + fertilizer + tackifier. Sprayed in one pass.
-                  Green in 7 days.
-                </p>
+                <div className="glass-strong rounded-xl p-5">
+                  <p className="text-2xl font-bold text-white mb-2">1 Application</p>
+                  <p className="text-white/80">
+                    Seed + mulch + fertilizer + tackifier. Sprayed in one pass.
+                    Green in 7 days.
+                  </p>
+                </div>
               </div>
             </div>
             <div className="absolute -z-10 inset-4 rounded-3xl bg-brand/5 blur-2xl" />
@@ -268,7 +270,9 @@ export default function Home() {
       </section>
 
       {/* ─── Services Grid ─── */}
-      <section className="py-32 sp bg-surface-raised border-t border-b border-border">
+      <section className="relative py-32 sp bg-surface-raised border-t border-b border-border overflow-hidden">
+        <div className="hero-glow top-0 left-1/4 -translate-x-1/2 -translate-y-1/2 opacity-30" />
+        <div className="hero-glow bottom-0 right-1/4 translate-x-1/2 translate-y-1/2 opacity-20" />
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -295,9 +299,9 @@ export default function Home() {
                   whileInView="show"
                   viewport={{ once: true, margin: "-50px" }}
                   variants={fadeUp}
-                  className="group p-8 rounded-2xl border border-border bg-surface hover:border-brand/30 transition-colors"
+                  className="group p-8 rounded-2xl glass-card glass-shimmer"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center mb-6 group-hover:bg-brand/20 transition-colors">
+                  <div className="w-12 h-12 rounded-xl glass-glow flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <Icon className="w-6 h-6 text-brand" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">{svc.title}</h3>
@@ -353,7 +357,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ delay: i * 0.08 }}
-                className={`relative overflow-hidden rounded-2xl border border-border group ${
+                className={`relative overflow-hidden rounded-2xl border border-white/[0.06] group ${
                   i === 2 ? "col-span-2 aspect-[2/1]" : "aspect-[4/3]"
                 }`}
               >
@@ -363,6 +367,12 @@ export default function Home() {
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute bottom-0 inset-x-0 p-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                  <div className="glass-strong rounded-lg px-4 py-2">
+                    <p className="text-sm font-medium text-white/90">{photo.alt}</p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -371,7 +381,7 @@ export default function Home() {
 
       {/* ─── Trusted Partners ─── */}
       <section className="py-20 sp border-t border-border">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto glass-subtle rounded-3xl p-10 sm:p-16">
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -417,8 +427,9 @@ export default function Home() {
       </section>
 
       {/* ─── CTA ─── */}
-      <section className="py-32 sp">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="relative py-32 sp overflow-hidden">
+        <div className="hero-glow top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-40" />
+        <div className="relative max-w-4xl mx-auto text-center glass-card glass-shimmer rounded-3xl p-12 sm:p-20">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -436,7 +447,7 @@ export default function Home() {
             </p>
             <Link
               href="/get-seeded"
-              className="group inline-flex items-center gap-3 px-10 py-5 bg-brand text-surface font-bold text-lg rounded-full hover:bg-brand-light transition-colors animate-pulse-glow"
+              className="group inline-flex items-center gap-3 px-10 py-5 bg-brand text-surface font-bold text-lg rounded-full hover:bg-brand-light transition-colors animate-pulse-glow shadow-[0_0_40px_rgba(0,200,152,0.3)]"
             >
               Get Seeded Now
               <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />

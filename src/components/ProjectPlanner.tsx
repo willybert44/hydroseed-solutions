@@ -480,7 +480,7 @@ export default function ProjectPlanner() {
   }, [step, contact.billingAddressSame]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-3xl mx-auto glass-strong rounded-3xl p-6 sm:p-10">
       {/* ─── Confirmation View ─── */}
       {confirmation ? (
         <motion.div
@@ -709,6 +709,9 @@ export default function ProjectPlanner() {
                   </p>
                 </div>
               </button>
+              <p className="text-xs text-text-muted text-center -mt-3 mb-6 md:hidden">
+                ℹ️ Map tool works best on a desktop or tablet — you can also enter your area manually below.
+              </p>
 
               <div className="flex items-center gap-4 mb-6">
                 <div className="h-px flex-1 bg-border" />

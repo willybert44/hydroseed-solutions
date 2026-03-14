@@ -58,10 +58,10 @@ export default function Navigation() {
       >
         <motion.div
           layout
-          className="glass rounded-2xl flex items-center gap-2 px-3 py-3 shadow-2xl"
+          className="glass-nav rounded-2xl flex items-center gap-2 px-4 py-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{
-            opacity: scrolled ? 1 : 0.85,
+            opacity: scrolled ? 1 : 0.92,
             y: scrolled ? 0 : 8,
           }}
           transition={{ duration: 0.3 }}
@@ -79,9 +79,9 @@ export default function Navigation() {
           {/* Center — Logo / Home */}
           <Link
             href="/"
-            className="relative mx-3 w-12 h-12 rounded-xl bg-brand flex items-center justify-center hover:bg-brand-light transition-colors shrink-0"
+            className="relative mx-3 w-14 h-14 rounded-xl bg-brand flex items-center justify-center hover:bg-brand-light transition-colors shrink-0"
           >
-            <Home className="w-6 h-6 text-surface" />
+            <Home className="w-7 h-7 text-surface" />
             {pathname === "/" && (
               <motion.div
                 layoutId="dock-indicator"
@@ -101,10 +101,10 @@ export default function Navigation() {
           ))}
 
           {/* CTA separator + button */}
-          <div className="w-px h-8 bg-border-light mx-2" />
+          <div className="w-px h-10 bg-border-light mx-3" />
           <Link
             href={ctaItem.href}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-base font-semibold transition-all duration-200 ${
+            className={`flex items-center gap-2 px-6 py-3.5 rounded-xl text-base font-semibold transition-all duration-200 ${
               pathname === ctaItem.href
                 ? "bg-brand text-surface"
                 : "bg-brand/10 text-brand hover:bg-brand hover:text-surface"
@@ -119,7 +119,7 @@ export default function Navigation() {
       {/* ─── Mobile: Floating Toggle ─── */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed bottom-6 right-6 z-[60] md:hidden w-14 h-14 rounded-2xl glass flex items-center justify-center shadow-2xl"
+        className="fixed bottom-6 right-6 z-[60] md:hidden w-16 h-16 rounded-2xl glass-nav flex items-center justify-center"
         aria-label="Toggle menu"
       >
         <AnimatePresence mode="wait">
@@ -243,7 +243,7 @@ function DockItem({
     <Link href={item.href} className="relative group">
       <motion.div
         layout
-        className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-colors duration-200 ${
+        className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl transition-colors duration-200 ${
           active
             ? "bg-brand/15 text-brand"
             : "text-text-secondary hover:text-text-primary hover:bg-white/5"

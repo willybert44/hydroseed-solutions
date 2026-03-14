@@ -314,7 +314,7 @@ export default function CommercialRFQ() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-3xl mx-auto glass-strong rounded-3xl p-6 sm:p-10">
       {/* ─── Progress Bar ─── */}
       <div className="flex items-center justify-between mb-12">
         {steps.map((s, i) => {
