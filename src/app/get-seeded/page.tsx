@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -12,6 +12,14 @@ import CommercialRFQ from "@/components/CommercialRFQ";
 type FlowType = null | "residential" | "commercial";
 
 export default function GetSeededPage() {
+  return (
+    <Suspense>
+      <GetSeededContent />
+    </Suspense>
+  );
+}
+
+function GetSeededContent() {
   const searchParams = useSearchParams();
   const isSuccess = searchParams.get('redirect_status') === 'succeeded' || searchParams.get('success') === 'true';
   const [flow, setFlow] = useState<FlowType>(null);
