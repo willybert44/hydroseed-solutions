@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneLink from "@/components/PhoneLink";
@@ -59,6 +59,14 @@ function formatTime(timeStr: string) {
 type View = "details" | "reschedule" | "cancelled" | "rescheduled";
 
 export default function ManageBookingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand" /></div>}>
+      <ManageBookingContent />
+    </Suspense>
+  );
+}
+
+function ManageBookingContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
