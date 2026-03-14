@@ -60,7 +60,7 @@ export async function POST(request: Request) {
             quantity: 1,
           }
         ],
-        notes: `Property specs:\nSqFt: ${data.squareFeet}\nSlope: ${data.slope}\nSoil: ${data.soil}\nSun: ${data.sun}`,
+        notes: `Property specs:\nSqFt: ${data.squareFeet}\nSlope: ${data.slope}\nGrading: ${data.grading}\nSoil Import: ${data.soilImport}\nSeed Blend: ${data.seedBlend}\nSun: ${data.sun}`,
         is_inclusive_tax: false
       }),
     });

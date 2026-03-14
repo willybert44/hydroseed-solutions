@@ -167,7 +167,7 @@ export default function AreasIndexPage() {
             <PhoneLink
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-full hover:border-brand hover:text-brand transition-colors"
             >
-              Call 412-866-SEED
+              Call 724-866-SEED
             </PhoneLink>
           </div>
         </div>

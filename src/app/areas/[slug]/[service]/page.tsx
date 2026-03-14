@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   
   return {
     title: `${serviceData.title} in ${suburb.name} PA | Hydroseed Solutions`,
-    description: `Professional ${serviceData.keyword} services in ${suburb.name}, ${suburb.county} County PA. High-quality hydroseeding, finish grading & erosion control. Free estimates — 412-866-SEED.`,
+    description: `Professional ${serviceData.keyword} services in ${suburb.name}, ${suburb.county} County PA. High-quality hydroseeding, finish grading & erosion control. Free estimates — 724-866-SEED.`,
     keywords: [
       `${serviceData.keyword} ${suburb.name}`,
       `${serviceData.keyword} ${suburb.name} PA`,
@@ -333,7 +333,7 @@ export default async function AreaServicePage({ params }: { params: Params }) {
             <PhoneLink
               className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-8 py-4 border-2 border-surface/30 rounded-full hover:bg-surface/10 transition-colors"
             >
-              Call 412-866-SEED
+              Call 724-866-SEED
             </PhoneLink>
           </div>
         </div>

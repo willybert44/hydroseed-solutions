@@ -32,7 +32,7 @@ export async function generateMetadata({
   if (!suburb) return {};
   return {
     title: `Hydroseeding ${suburb.name} PA | Lawn Installation & Erosion Control`,
-    description: `Professional hydroseeding in ${suburb.name}, ${suburb.county} County PA. Lawn installation, finish grading, erosion control & custom seed blends. Serving ${suburb.name} and surrounding Pittsburgh suburbs. Free estimates — 412-866-SEED.`,
+    description: `Professional hydroseeding in ${suburb.name}, ${suburb.county} County PA. Lawn installation, finish grading, erosion control & custom seed blends. Serving ${suburb.name} and surrounding Pittsburgh suburbs. Free estimates — 724-866-SEED.`,
     keywords: [
       `hydroseeding ${suburb.name}`,
       `hydroseed ${suburb.name} PA`,
@@ -228,7 +228,7 @@ export default async function SuburbPage({
             <PhoneLink
               className="inline-flex items-center gap-2 px-6 py-3 border border-border rounded-full text-text-secondary hover:text-brand hover:border-brand transition-colors"
             >
-              Call 412-866-SEED
+              Call 724-866-SEED
             </PhoneLink>
           </div>
         </div>
@@ -491,7 +491,7 @@ export default async function SuburbPage({
             <PhoneLink
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-full hover:border-brand hover:text-brand transition-colors"
             >
-              Call 412-866-SEED
+              Call 724-866-SEED
             </PhoneLink>
           </div>
         </div>

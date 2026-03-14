@@ -30,7 +30,7 @@ export async function generateMetadata({
   if (!svc) return {};
   return {
     title: `${svc.name} Hydroseeding Services | Pittsburgh PA | Hydroseed Solutions`,
-    description: `${svc.heroDescription.slice(0, 150)}. Professional ${svc.name.toLowerCase()} hydroseeding in Pittsburgh & Western PA. Free estimates — 412-866-SEED.`,
+    description: `${svc.heroDescription.slice(0, 150)}. Professional ${svc.name.toLowerCase()} hydroseeding in Pittsburgh & Western PA. Free estimates — 724-866-SEED.`,
     keywords: [
       `${svc.name.toLowerCase()} hydroseeding`,
       `${svc.name.toLowerCase()} Pittsburgh`,
@@ -191,7 +191,7 @@ export default async function ServiceLandingPage({
             <PhoneLink
               className="inline-flex items-center gap-2 px-6 py-3 border border-border rounded-full text-text-secondary hover:text-brand hover:border-brand transition-colors"
             >
-              Call 412-866-SEED
+              Call 724-866-SEED
             </PhoneLink>
           </div>
         </div>
@@ -462,7 +462,7 @@ export default async function ServiceLandingPage({
             <PhoneLink
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-full hover:border-brand hover:text-brand transition-colors"
             >
-              Call 412-866-SEED
+              Call 724-866-SEED
             </PhoneLink>
           </div>
         </div>

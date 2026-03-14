@@ -1,16 +1,139 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { Home, HardHat, ArrowLeft, ClipboardList, Calculator, CalendarCheck } from "lucide-react";
+import { Home, HardHat, ArrowLeft, ClipboardList, Calculator, CalendarCheck, CheckCircle, Phone, Mail } from "lucide-react";
 import ProjectPlanner from "@/components/ProjectPlanner";
+import PhoneLink from "@/components/PhoneLink";
 import CommercialRFQ from "@/components/CommercialRFQ";
 
 type FlowType = null | "residential" | "commercial";
 
 export default function GetSeededPage() {
+  const searchParams = useSearchParams();
+  const isSuccess = searchParams.get('redirect_status') === 'succeeded' || searchParams.get('success') === 'true';
   const [flow, setFlow] = useState<FlowType>(null);
+
+  if (isSuccess) {
+    return (
+      <>
+        <section className="relative pt-32 pb-16 px-6">
+          <div className="hero-glow top-0 left-1/2 -translate-x-1/2 opacity-25" />
+          <div className="max-w-2xl mx-auto text-center">
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', duration: 0.6 }}
+              className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-8"
+            >
+              <CheckCircle className="w-10 h-10 text-brand" />
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-4xl sm:text-5xl font-bold tracking-tight mb-4"
+            >
+              You&apos;re <span className="text-gradient">booked!</span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="text-lg text-text-secondary max-w-lg mx-auto leading-relaxed mb-10"
+            >
+              Your deposit has been received and your project is officially on the schedule. Here&apos;s what happens next.
+            </motion.p>
+          </div>
+        </section>
+
+        <section className="px-6 pb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="max-w-2xl mx-auto"
+          >
+            {/* Timeline */}
+            <div className="space-y-0">
+              {[
+                {
+                  step: "1",
+                  title: "Confirmation Email",
+                  desc: "You\u2019ll receive a payment receipt and project confirmation within a few minutes.",
+                  timing: "Right now",
+                },
+                {
+                  step: "2",
+                  title: "We\u2019ll Reach Out",
+                  desc: "Our team will call or text to confirm your project details and finalize the scope. Your deposit is credited in full toward the project total.",
+                  timing: "Within 1 business day",
+                },
+                {
+                  step: "3",
+                  title: "Project Scheduling",
+                  desc: "We\u2019ll lock in a date that works for you. Most projects are scheduled within 5 business days.",
+                  timing: "Within 5 business days",
+                },
+                {
+                  step: "4",
+                  title: "Project Day",
+                  desc: "Our crew arrives, sprays, and you\u2019re on your way to a beautiful lawn. We\u2019ll leave you with aftercare instructions.",
+                  timing: "Scheduled together",
+                },
+              ].map((item, i) => (
+                <div key={item.step} className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center text-sm font-bold text-brand shrink-0">
+                      {item.step}
+                    </div>
+                    {i < 3 && <div className="w-px flex-1 bg-border my-1" />}
+                  </div>
+                  <div className="pb-8">
+                    <p className="font-semibold text-text-primary">{item.title}</p>
+                    <p className="text-sm text-text-secondary mt-0.5 leading-relaxed">{item.desc}</p>
+                    <p className="text-xs text-brand font-medium mt-1">{item.timing}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Contact card */}
+            <div className="mt-4 p-6 rounded-2xl border border-border bg-surface-raised">
+              <h3 className="font-bold mb-3">Questions in the meantime?</h3>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <PhoneLink
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border hover:border-brand/40 transition-colors text-sm font-medium"
+                >
+                  <Phone className="w-4 h-4 text-brand" />
+                  (724) 866-7333
+                </PhoneLink>
+                <a
+                  href="mailto:hello@hydroseed.solutions"
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border hover:border-brand/40 transition-colors text-sm font-medium"
+                >
+                  <Mail className="w-4 h-4 text-brand" />
+                  hello@hydroseed.solutions
+                </a>
+              </div>
+            </div>
+
+            {/* Back link */}
+            <div className="mt-10 text-center">
+              <a
+                href="/"
+                className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+              >
+                \u2190 Back to homepage
+              </a>
+            </div>
+          </motion.div>
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
@@ -132,7 +255,7 @@ export default function GetSeededPage() {
                   Contractor / Commercial
                 </h3>
                 <p className="text-sm text-text-secondary leading-relaxed mb-4">
-                  GCs, developers, engineers, municipalities. Submit an RFQ and
+                  GCs, landscapers, pool installers, developers, engineers, municipalities, excavators &amp; site-work contractors. Submit an RFQ and
                   we&apos;ll respond with a formal quote.
                 </p>
                 <span className="inline-flex items-center gap-1 text-sm text-brand font-medium">
@@ -179,6 +302,7 @@ export default function GetSeededPage() {
               src="/images/photos/photo-hydroseed-lawn-backyard-landscaping.jpg"
               alt="Completed hydroseeding project"
               fill
+              sizes="(max-width: 768px) 33vw, 256px"
               className="object-cover"
             />
           </div>
@@ -187,6 +311,7 @@ export default function GetSeededPage() {
               src="/images/photos/photo-construction-site-hydroseeding-2024-05-07.jpg"
               alt="Commercial hydroseeding project"
               fill
+              sizes="(max-width: 768px) 33vw, 256px"
               className="object-cover"
             />
           </div>
@@ -195,6 +320,7 @@ export default function GetSeededPage() {
               src="/images/photos/photo-hydroseeding-lawn-2025-10-03.jpg"
               alt="Fresh hydroseeded lawn"
               fill
+              sizes="(max-width: 768px) 33vw, 256px"
               className="object-cover"
             />
           </div>

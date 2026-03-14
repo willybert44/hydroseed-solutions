@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Hydroseeding Services | Lawn Installation, Grading & Erosion Control | Pittsburgh PA",
   description:
-    "Full-service hydroseeding in Pittsburgh & Western PA. Residential lawn installation, finish grading, erosion control, slope stabilization, commercial hydroseeding, custom seed blending & more. Free estimates — 412-866-SEED.",
+    "Full-service hydroseeding in Pittsburgh & Western PA. Residential lawn installation, finish grading, erosion control, slope stabilization, commercial hydroseeding, custom seed blending & more. Free estimates — 724-866-SEED.",
   keywords: [
     "hydroseeding services Pittsburgh",
     "lawn installation Pittsburgh",

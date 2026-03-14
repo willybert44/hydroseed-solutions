@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { trackConversion, trackEvent } from "@/lib/gtag";
+import PhoneLink from "@/components/PhoneLink";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -14,7 +15,6 @@ import {
   Ruler,
   Mountain,
   Layers,
-  Sun,
   FlaskConical,
   Calculator,
   ArrowRight,
@@ -29,23 +29,45 @@ import {
   Camera,
   X,
   ImagePlus,
+  Shovel,
+  User,
+  CheckCircle,
+  Phone,
+  Mail,
 } from "lucide-react";
 
 const SiteMeasure = lazy(() => import("./SiteMeasure"));
+import BookingPopup, { type BookingResult } from "./BookingPopup";
 
 /* ─── Types ─── */
+type ConfirmationData =
+  | { type: "deposit"; amount: number; estimateBase: number }
+  | BookingResult;
+
 type SlopeCondition = "flat" | "mild" | "moderate" | "steep";
-type SoilCondition = "topsoil" | "clay" | "rocky" | "sandy" | "unknown";
-type SunExposure = "full-sun" | "partial" | "full-shade" | "mixed";
+type GradingLevel = "none" | "minor" | "full";
+type SoilImport = "none" | "topsoil" | "bsm";
+type SeedBlend = "lawn" | "erosion" | "wildflower" | "custom" | "";
 type Amendment = "lime" | "compost";
 type AreaUnit = "sqft" | "acres";
 
 interface FormData {
   squareFeet: number;
   slope: SlopeCondition | "";
-  soil: SoilCondition | "";
-  sun: SunExposure | "";
+  grading: GradingLevel | "";
+  soilImport: SoilImport;
+  seedBlend: SeedBlend;
   amendments: Amendment[];
+}
+
+interface ContactInfo {
+  name: string;
+  email: string;
+  phone: string;
+  smsOptIn: boolean;
+  projectAddress: string;
+  billingAddressSame: boolean;
+  billingAddress: string;
 }
 
 /* ─── Pricing Config ─── */
@@ -61,6 +83,29 @@ const AMENDMENT_COST: Record<Amendment, number> = {
   compost: 0.025,
 };
 
+/* Grading: 2-man crew @ 406 SF/man-hr = 812 SF/crew-hr. $500/crew-hr. $2,000 min. */
+const GRADING_CREW_RATE = 500;        // $/crew-hour
+const GRADING_MINIMUM = 2000;
+const GRADING_PRODUCTIVITY: Record<Exclude<GradingLevel, "none">, number> = {
+  minor: 1200,   // SF/crew-hr — light loosening, faster throughput
+  full: 812,     // SF/crew-hr — full reslope at base rate
+};
+
+/*
+ * Topsoil: 20-ton triaxle @ $37.50/ton = $750/load.
+ * ~14,000 SF coverage per load at 1" depth.
+ * +$350 delivery per load, +spreading time at grading crew rate.
+ * Spreading rate ~1,000 SF/crew-hr.
+ * Round to nearest full triaxle load.
+ *
+ * BSM (Proganics Dual): sprayed with hydroseeder — cheaper than hauling.
+ */
+const TOPSOIL_COST_PER_LOAD = 750;     // 20 tons × $37.50
+const TOPSOIL_DELIVERY_PER_LOAD = 350;
+const TOPSOIL_COVERAGE_PER_LOAD = 14000; // SF per load at 1" depth
+const TOPSOIL_SPREAD_RATE = 1000;       // SF/crew-hr
+const BSM_RATE = 0.07;                  // $/sqft — sprayed, no hauling
+
 const MINIMUM_PROJECT = 500;
 
 function getBaseRate(sqft: number): number {
@@ -70,7 +115,15 @@ function getBaseRate(sqft: number): number {
   return 0.14;
 }
 
-function calculateEstimate(data: FormData): { low: number; high: number; base: number } {
+function calculateEstimate(data: FormData): {
+  low: number;
+  high: number;
+  base: number;
+  gradingCost: number;
+  soilImportCost: number;
+  hydroseedBase: number;
+  topsoilLoads: number;
+} {
   const sqft = data.squareFeet || 0;
   const baseRate = getBaseRate(sqft);
   const slopeMult = data.slope ? SLOPE_MULTIPLIER[data.slope] : 1;
@@ -78,12 +131,37 @@ function calculateEstimate(data: FormData): { low: number; high: number; base: n
     (sum, a) => sum + AMENDMENT_COST[a],
     0
   );
-  const totalPerSqft = (baseRate + amendmentAdd) * slopeMult;
-  const base = Math.max(sqft * totalPerSqft, MINIMUM_PROJECT);
+  const hydroseedPerSqft = (baseRate + amendmentAdd) * slopeMult;
+  const hydroseedBase = Math.max(sqft * hydroseedPerSqft, MINIMUM_PROJECT);
+
+  let gradingCost = 0;
+  if (data.grading && data.grading !== "none") {
+    const crewHours = Math.ceil(sqft / GRADING_PRODUCTIVITY[data.grading]);
+    gradingCost = Math.max(GRADING_MINIMUM, crewHours * GRADING_CREW_RATE);
+  }
+
+  let soilImportCost = 0;
+  let topsoilLoads = 0;
+  if (data.soilImport === "topsoil") {
+    topsoilLoads = Math.max(1, Math.round(sqft / TOPSOIL_COVERAGE_PER_LOAD));
+    const materialCost = topsoilLoads * TOPSOIL_COST_PER_LOAD;
+    const deliveryCost = topsoilLoads * TOPSOIL_DELIVERY_PER_LOAD;
+    const spreadHours = Math.ceil(sqft / TOPSOIL_SPREAD_RATE);
+    const spreadCost = spreadHours * GRADING_CREW_RATE;
+    soilImportCost = materialCost + deliveryCost + spreadCost;
+  } else if (data.soilImport === "bsm") {
+    soilImportCost = Math.round(sqft * BSM_RATE);
+  }
+
+  const base = hydroseedBase + gradingCost + soilImportCost;
   return {
     low: Math.round(base * 0.9),
     high: Math.round(base * 1.15),
     base: Math.round(base),
+    gradingCost,
+    soilImportCost,
+    hydroseedBase: Math.round(hydroseedBase),
+    topsoilLoads,
   };
 }
 
@@ -91,10 +169,11 @@ function calculateEstimate(data: FormData): { low: number; high: number; base: n
 const steps = [
   { label: "Area", icon: Ruler },
   { label: "Slope", icon: Mountain },
-  { label: "Soil", icon: Layers },
-  { label: "Sun", icon: Sun },
+  { label: "Grading", icon: Shovel },
+  { label: "Seed", icon: Layers },
   { label: "Extras", icon: FlaskConical },
   { label: "Photos", icon: Camera },
+  { label: "Contact", icon: User },
   { label: "Estimate", icon: Calculator },
 ];
 
@@ -105,19 +184,23 @@ const slopeOptions: { value: SlopeCondition; label: string; desc: string }[] = [
   { value: "steep", label: "Steep", desc: "30%+ grade" },
 ];
 
-const soilOptions: { value: SoilCondition; label: string; desc: string }[] = [
-  { value: "topsoil", label: "Topsoil Present", desc: "Good existing soil" },
-  { value: "clay", label: "Clay Heavy", desc: "Dense, slow-draining" },
-  { value: "rocky", label: "Rocky / Gravel", desc: "Needs amendment" },
-  { value: "sandy", label: "Sandy", desc: "Fast-draining, low nutrient" },
-  { value: "unknown", label: "Not Sure", desc: "We'll test on site" },
+const soilImportOptions: { value: SoilImport; label: string; desc: string }[] = [
+  { value: "none", label: "No Import Needed", desc: "Existing soil is usable" },
+  { value: "topsoil", label: "Topsoil Import", desc: "Hauled in by triaxle — 1\u2033 layer based on your area" },
+  { value: "bsm", label: "BSM (Proganics Dual)", desc: "Sprayable topsoil applied with the hydroseeder" },
 ];
 
-const sunOptions: { value: SunExposure; label: string; desc: string }[] = [
-  { value: "full-sun", label: "Full Sun", desc: "6+ hours direct sunlight" },
-  { value: "partial", label: "Partial Shade", desc: "3–6 hours sunlight" },
-  { value: "full-shade", label: "Full Shade", desc: "Under 3 hours" },
-  { value: "mixed", label: "Mixed", desc: "Varies across the area" },
+const gradingOptions: { value: GradingLevel; label: string; desc: string }[] = [
+  { value: "none", label: "Already Prepped", desc: "Soil is soft — you can sift through it by hand" },
+  { value: "minor", label: "Minor Loosening", desc: "Mostly OK but the surface is a bit firm" },
+  { value: "full", label: "Full Resloping / Grading", desc: "Hard-packed, compacted, or needs reshaping" },
+];
+
+const seedBlendOptions: { value: Exclude<SeedBlend, "">; label: string; desc: string }[] = [
+  { value: "lawn", label: "Lawn Blend", desc: "Turf-type tall fescue — classic residential lawn" },
+  { value: "erosion", label: "Erosion Control", desc: "Fast-establishing mix for slopes & bare soil" },
+  { value: "wildflower", label: "Wildflower / Native", desc: "Pollinator-friendly native meadow blend" },
+  { value: "custom", label: "Not Sure / Custom", desc: "We’ll recommend the best blend for your site" },
 ];
 
 const amendmentOptions: { value: Amendment; label: string; desc: string }[] = [
@@ -129,7 +212,7 @@ const amendmentOptions: { value: Amendment; label: string; desc: string }[] = [
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 /* ─── Inline Checkout Form ─── */
-function CheckoutForm({ amount, onCancel }: { amount: number; onCancel: () => void }) {
+function CheckoutForm({ amount, onCancel, onSuccess }: { amount: number; onCancel: () => void; onSuccess: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -142,15 +225,18 @@ function CheckoutForm({ amount, onCancel }: { amount: number; onCancel: () => vo
     setIsProcessing(true);
     setMessage(null);
 
-    const { error } = await stripe.confirmPayment({
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/get-seeded?success=true`,
-      },
+      redirect: "if_required",
     });
 
     if (error) {
       setMessage(error.message ?? "An unexpected error occurred.");
+      setIsProcessing(false);
+    } else if (paymentIntent?.status === "succeeded") {
+      onSuccess();
+    } else {
+      setMessage("Payment was not completed. Please try again.");
       setIsProcessing(false);
     }
   };
@@ -187,16 +273,31 @@ export default function ProjectPlanner() {
   const [step, setStep] = useState(0);
   const [feeExpanded, setFeeExpanded] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
+  const [bookingService, setBookingService] = useState<"phone" | "walkthrough" | "soil-test" | undefined>();
+  const [confirmation, setConfirmation] = useState<ConfirmationData | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [areaUnit, setAreaUnit] = useState<AreaUnit>("sqft");
   const [areaInput, setAreaInput] = useState<number>(0);
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [contact, setContact] = useState<ContactInfo>({
+    name: '',
+    email: '',
+    phone: '',
+    smsOptIn: false,
+    projectAddress: '',
+    billingAddressSame: true,
+    billingAddress: '',
+  });
+  const projectAddressRef = useRef<HTMLInputElement>(null);
+  const billingAddressRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormData>({
     squareFeet: 0,
     slope: "",
-    soil: "",
-    sun: "",
+    grading: "",
+    soilImport: "none",
+    seedBlend: "",
     amendments: [],
   });
 
@@ -209,13 +310,19 @@ export default function ProjectPlanner() {
       case 1:
         return form.slope !== "";
       case 2:
-        return form.soil !== "";
+        return form.grading !== "";
       case 3:
-        return form.sun !== "";
+        return form.seedBlend !== "";
       case 4:
         return true;
       case 5:
         return true;
+      case 6: {
+        const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email);
+        const nameParts = contact.name.trim().split(/\s+/);
+        const nameValid = nameParts.length >= 2 && nameParts.every(p => p.length > 0);
+        return nameValid && emailValid && contact.phone.trim() !== '' && contact.projectAddress.trim() !== '';
+      }
       default:
         return true;
     }
@@ -252,9 +359,16 @@ export default function ProjectPlanner() {
           estimateBase: estimate.base,
           squareFeet: form.squareFeet,
           slope: form.slope,
-          soil: form.soil,
-          sun: form.sun,
+          grading: form.grading,
+          soilImport: form.soilImport,
+          seedBlend: form.seedBlend,
           amendments: form.amendments,
+          contactName: contact.name,
+          contactEmail: contact.email,
+          contactPhone: contact.phone,
+          smsOptIn: contact.smsOptIn,
+          projectAddress: contact.projectAddress,
+          billingAddress: contact.billingAddressSame ? contact.projectAddress : contact.billingAddress,
         }),
       });
 
@@ -276,20 +390,246 @@ export default function ProjectPlanner() {
     }
   };
 
-  // Track conversion when user reaches the estimate step
+  // Save lead & track conversion when user reaches the estimate step
   useEffect(() => {
-    if (step === 6) {
+    if (step === 7) {
+      fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'residential',
+          name: contact.name,
+          email: contact.email,
+          phone: contact.phone,
+          smsOptIn: contact.smsOptIn,
+          projectAddress: contact.projectAddress,
+          billingAddress: contact.billingAddressSame ? contact.projectAddress : contact.billingAddress,
+          squareFeet: form.squareFeet,
+          slope: form.slope,
+          grading: form.grading,
+          soilImport: form.soilImport,
+          seedBlend: form.seedBlend,
+          amendments: form.amendments,
+          estimateLow: estimate.low,
+          estimateHigh: estimate.high,
+          estimateBase: estimate.base,
+        }),
+      }).catch(err => console.error('Failed to save lead:', err));
+
       trackEvent("generate_lead", {
         currency: "USD",
         value: estimate.base,
       });
-      // Replace with your real Google Ads conversion label:
       trackConversion(process.env.NEXT_PUBLIC_AW_ESTIMATE_LABEL ?? "", estimate.base);
     }
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Google Places Autocomplete for contact address fields
+  useEffect(() => {
+    if (step !== 7) return;
+    let cancelled = false;
+
+    const attach = (input: HTMLInputElement | null, field: 'projectAddress' | 'billingAddress') => {
+      if (!input || input.dataset.acAttached) return;
+      if (typeof google === 'undefined' || !google.maps?.places) return;
+      const ac = new google.maps.places.Autocomplete(input, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+      });
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (place.formatted_address) {
+          setContact(prev => ({ ...prev, [field]: place.formatted_address! }));
+        }
+      });
+      input.dataset.acAttached = '1';
+    };
+
+    const init = async () => {
+      if (typeof google === 'undefined' || !google.maps?.places) {
+        const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+        if (!key) return;
+        if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+          await new Promise<void>((resolve) => {
+            const s = document.createElement('script');
+            s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+            s.async = true;
+            s.onload = () => resolve();
+            s.onerror = () => resolve();
+            document.head.appendChild(s);
+          });
+        } else {
+          await new Promise<void>((resolve) => {
+            const poll = setInterval(() => {
+              if (typeof google !== 'undefined' && google.maps?.places) {
+                clearInterval(poll);
+                resolve();
+              }
+            }, 100);
+            setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
+          });
+        }
+      }
+      if (cancelled) return;
+      attach(projectAddressRef.current, 'projectAddress');
+      attach(billingAddressRef.current, 'billingAddress');
+    };
+
+    init();
+    return () => { cancelled = true; };
+  }, [step, contact.billingAddressSame]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="w-full max-w-3xl mx-auto">
+      {/* ─── Confirmation View ─── */}
+      {confirmation ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", duration: 0.6 }}
+            className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-8"
+          >
+            <CheckCircle className="w-10 h-10 text-brand" />
+          </motion.div>
+
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+            {confirmation.type === "deposit" ? (
+              <>You&apos;re <span className="text-gradient">booked!</span></>
+            ) : (
+              <>You&apos;re <span className="text-gradient">all set!</span></>
+            )}
+          </h2>
+
+          <p className="text-lg text-text-secondary max-w-lg mx-auto leading-relaxed mb-8">
+            {confirmation.type === "deposit"
+              ? "Your deposit has been received and your project is officially on the schedule."
+              : confirmation.service === "phone"
+                ? "Your phone consultation has been scheduled."
+                : `Your ${confirmation.serviceLabel.toLowerCase()} has been booked.`}
+          </p>
+
+          {/* Details card */}
+          <div className="max-w-md mx-auto p-6 rounded-2xl border border-brand/20 bg-brand/5 mb-8 text-left">
+            {confirmation.type === "deposit" ? (
+              <>
+                <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">Deposit Receipt</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Deposit paid</span>
+                    <span className="font-semibold">${confirmation.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Est. project total</span>
+                    <span className="font-semibold">${confirmation.estimateBase.toLocaleString()}</span>
+                  </div>
+                  <div className="pt-2 mt-2 border-t border-brand/20 flex justify-between">
+                    <span className="text-text-secondary">Remaining balance</span>
+                    <span className="font-semibold">${(confirmation.estimateBase - confirmation.amount).toLocaleString()}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">Booking Details</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Service</span>
+                    <span className="font-semibold">{confirmation.serviceLabel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Date</span>
+                    <span className="font-semibold">{confirmation.displayDate}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Time</span>
+                    <span className="font-semibold">{confirmation.displayTime}</span>
+                  </div>
+                  {confirmation.price !== "Free" && (
+                    <div className="pt-2 mt-2 border-t border-brand/20 flex justify-between">
+                      <span className="text-text-secondary">Payment</span>
+                      <span className="font-semibold text-brand">{confirmation.price} paid</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Next steps timeline */}
+          <div className="max-w-md mx-auto text-left mb-8">
+            <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-4">What happens next</p>
+            <div className="space-y-0">
+              {(confirmation.type === "deposit"
+                ? [
+                    { step: "1", title: "Confirmation Email", desc: "You\u2019ll receive a payment receipt and project confirmation within a few minutes.", timing: "Right now" },
+                    { step: "2", title: "We\u2019ll Reach Out", desc: "Our team will call or text to confirm your project details and finalize the scope. Your deposit is credited in full toward the project total.", timing: "Within 1 business day" },
+                    { step: "3", title: "Project Scheduling", desc: "We\u2019ll lock in a date that works for you. Most projects are scheduled within 5 business days.", timing: "Within 5 business days" },
+                    { step: "4", title: "Project Day", desc: "Our crew arrives, sprays, and you\u2019re on your way to a beautiful lawn.", timing: "Scheduled together" },
+                  ]
+                : confirmation.service === "phone"
+                ? [
+                    { step: "1", title: "Confirmation Email", desc: `A confirmation has been sent to ${contact.email}.`, timing: "Right now" },
+                    { step: "2", title: "Phone Consultation", desc: `We\u2019ll call you at ${contact.phone} at your scheduled time to discuss your project.`, timing: confirmation.displayDate },
+                    { step: "3", title: "Custom Proposal", desc: "After the call we\u2019ll send you a detailed proposal based on your project needs.", timing: "Same day" },
+                  ]
+                : [
+                    { step: "1", title: "Confirmation Email", desc: `A confirmation has been sent to ${contact.email}.`, timing: "Right now" },
+                    { step: "2", title: confirmation.serviceLabel, desc: `We\u2019ll visit your property on ${confirmation.displayDate} at ${confirmation.displayTime} to walk the site and finalize your plan.`, timing: confirmation.displayDate },
+                    { step: "3", title: "Final Proposal", desc: "You\u2019ll receive a precise quote based on actual site conditions. Consultation fee is credited toward your project.", timing: "Same day" },
+                    { step: "4", title: "Project Scheduling", desc: "If you decide to move forward, we\u2019ll schedule your project within 5 business days.", timing: "When you\u2019re ready" },
+                  ]
+              ).map((item, i, arr) => (
+                <div key={item.step} className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center text-sm font-bold text-brand shrink-0">
+                      {item.step}
+                    </div>
+                    {i < arr.length - 1 && <div className="w-px flex-1 bg-border my-1" />}
+                  </div>
+                  <div className="pb-6">
+                    <p className="font-semibold text-text-primary">{item.title}</p>
+                    <p className="text-sm text-text-secondary mt-0.5 leading-relaxed">{item.desc}</p>
+                    <p className="text-xs text-brand font-medium mt-1">{item.timing}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact card */}
+          <div className="max-w-md mx-auto p-6 rounded-2xl border border-border bg-surface-raised mb-8">
+            <h3 className="font-bold mb-3">Questions in the meantime?</h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <PhoneLink
+                className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border hover:border-brand/40 transition-colors text-sm font-medium"
+              >
+                <Phone className="w-4 h-4 text-brand" />
+                (724) 866-7333
+              </PhoneLink>
+              <a
+                href="mailto:hello@hydroseed.solutions"
+                className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border hover:border-brand/40 transition-colors text-sm font-medium"
+              >
+                <Mail className="w-4 h-4 text-brand" />
+                hello@hydroseed.solutions
+              </a>
+            </div>
+          </div>
+
+          <a
+            href="/"
+            className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+          >
+            &larr; Back to homepage
+          </a>
+        </motion.div>
+      ) : (
+      <>
       {/* ─── Progress Bar ─── */}
       <div className="flex items-center justify-between mb-12">
         {steps.map((s, i) => {
@@ -341,7 +681,7 @@ export default function ProjectPlanner() {
           {step === 0 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 1 of 7 — Area Size
+                Step 1 of 8 — Area Size
               </p>
               <h3 className="text-2xl font-bold mb-2">
                 How big is the area?
@@ -459,7 +799,7 @@ export default function ProjectPlanner() {
           {step === 1 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 2 of 7 — Slope
+                Step 2 of 8 — Slope
               </p>
               <h3 className="text-2xl font-bold mb-2">
                 What&apos;s the slope like?
@@ -493,31 +833,33 @@ export default function ProjectPlanner() {
             </div>
           )}
 
-          {/* Step 2: Soil */}
+          {/* Step 2: Site Prep & Soil */}
           {step === 2 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 3 of 7 — Soil
+                Step 3 of 8 — Site Prep &amp; Soil
               </p>
-              <h3 className="text-2xl font-bold mb-2">
-                What&apos;s the soil situation?
-              </h3>
-              <p className="text-text-secondary mb-4">
-                Soil type affects seed selection and amendment requirements.
+
+              <h4 className="text-lg font-bold mb-2">
+                Need soil imported?
+              </h4>
+              <p className="text-text-secondary text-sm mb-4">
+                If existing soil is poor or missing, we can bring in topsoil by the triaxle load or spray BSM (Proganics Dual) with the hydroseeder.
               </p>
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-brand/5 border border-brand/10 mb-6">
-                <Info className="w-4 h-4 text-brand shrink-0 mt-0.5" />
-                <p className="text-sm text-text-secondary">
-                  <strong className="text-text-primary">Not sure?</strong> That&apos;s the most common answer — just pick &quot;Not Sure&quot; and we&apos;ll test your soil during the site visit. No wrong answers here.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {soilOptions.map((opt) => (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+                {soilImportOptions.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => setForm({ ...form, soil: opt.value })}
+                    onClick={() => {
+                      const next: Partial<FormData> = { soilImport: opt.value };
+                      // Topsoil needs spreading → cannot be "already prepped"
+                      if (opt.value === "topsoil" && form.grading === "none") {
+                        next.grading = "minor";
+                      }
+                      setForm({ ...form, ...next });
+                    }}
                     className={`p-5 rounded-2xl border text-left transition-all ${
-                      form.soil === opt.value
+                      form.soilImport === opt.value
                         ? "border-brand bg-brand/10"
                         : "border-border bg-surface-overlay hover:border-border-light"
                     }`}
@@ -527,34 +869,70 @@ export default function ProjectPlanner() {
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+              {form.soilImport === "topsoil" && form.squareFeet > 0 && (
+                <p className="text-sm text-text-muted mb-6">
+                  Estimated {estimate.topsoilLoads} triaxle load{estimate.topsoilLoads > 1 ? "s" : ""} for {form.squareFeet.toLocaleString()} sqft
+                </p>
+              )}
 
-          {/* Step 3: Sun */}
-          {step === 3 && (
-            <div>
-              <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 4 of 7 — Sun Exposure
-              </p>
               <h3 className="text-2xl font-bold mb-2">
-                How much sun does it get?
+                Is the seedbed prepared?
               </h3>
               <p className="text-text-secondary mb-4">
-                Sun exposure determines the optimal seed blend for your project.
+                The top layer of soil needs to be loose enough to sift through by hand. If the ground is hard-packed or compacted, grading is needed.
               </p>
               <div className="flex items-start gap-3 p-4 rounded-xl bg-brand/5 border border-brand/10 mb-6">
                 <Info className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                 <p className="text-sm text-text-secondary">
-                  <strong className="text-text-primary">Quick test:</strong> Check the area around noon. If it&apos;s in direct sunlight with no tree cover, that&apos;s full sun. Trees overhead? Partial shade. If different parts of the area vary, pick &quot;Mixed.&quot;
+                  <strong className="text-text-primary">How to tell:</strong> Kneel down and try to sift the top few inches of soil through your fingers. If it crumbles and moves freely, the seedbed is ready. If it&apos;s hard and won&apos;t break apart, grading is needed.
                 </p>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {gradingOptions.map((opt) => {
+                  const disabled = opt.value === "none" && form.soilImport === "topsoil";
+                  return (
+                    <button
+                      key={opt.value}
+                      disabled={disabled}
+                      onClick={() => setForm({ ...form, grading: opt.value })}
+                      className={`p-5 rounded-2xl border text-left transition-all ${
+                        disabled
+                          ? "border-border bg-surface-overlay opacity-40 cursor-not-allowed"
+                          : form.grading === opt.value
+                            ? "border-brand bg-brand/10"
+                            : "border-border bg-surface-overlay hover:border-border-light"
+                      }`}
+                    >
+                      <p className="font-semibold mb-1">{opt.label}</p>
+                      <p className="text-xs text-text-muted">
+                        {disabled ? "Topsoil import requires grading" : opt.desc}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Seed Blend */}
+          {step === 3 && (
+            <div>
+              <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
+                Step 4 of 8 — Seed Blend
+              </p>
+              <h3 className="text-2xl font-bold mb-2">
+                What type of seed blend?
+              </h3>
+              <p className="text-text-secondary mb-4">
+                Different projects call for different seed mixes. Pick what fits your goals — or let us recommend the right blend.
+              </p>
               <div className="grid grid-cols-2 gap-3">
-                {sunOptions.map((opt) => (
+                {seedBlendOptions.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => setForm({ ...form, sun: opt.value })}
+                    onClick={() => setForm({ ...form, seedBlend: opt.value })}
                     className={`p-5 rounded-2xl border text-left transition-all ${
-                      form.sun === opt.value
+                      form.seedBlend === opt.value
                         ? "border-brand bg-brand/10"
                         : "border-border bg-surface-overlay hover:border-border-light"
                     }`}
@@ -571,7 +949,7 @@ export default function ProjectPlanner() {
           {step === 4 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 5 of 7 — Optional Extras
+                Step 5 of 8 — Optional Extras
               </p>
               <h3 className="text-2xl font-bold mb-2">
                 Any extras needed?
@@ -621,11 +999,11 @@ export default function ProjectPlanner() {
             </div>
           )}
 
-          {/* Step 5: Photos */}
+          {/* Step 6: Photos */}
           {step === 5 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 6 of 7 — Photos (Optional)
+                Step 6 of 8 — Photos (Optional)
               </p>
               <h3 className="text-2xl font-bold mb-2">
                 Photo walkthrough
@@ -705,18 +1083,153 @@ export default function ProjectPlanner() {
             </div>
           )}
 
-          {/* Step 6: Results */}
+          {/* Step 7: Contact Info */}
           {step === 6 && (
             <div>
               <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
-                Step 7 of 7 — Your Estimate
+                Step 7 of 8 — Contact Info
+              </p>
+              <h3 className="text-2xl font-bold mb-2">
+                Where should we send your estimate?
+              </h3>
+              <p className="text-text-secondary mb-6">
+                We need a few details to finalize your estimate and reach out about scheduling.
+              </p>
+
+              <div className="space-y-4">
+                {/* Name */}
+                <div>
+                  <label htmlFor="contact-name" className="block text-sm font-medium text-text-primary mb-1.5">
+                    Full Name <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    id="contact-name"
+                    type="text"
+                    value={contact.name}
+                    onChange={(e) => {
+                      const capitalized = e.target.value.replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+                      setContact(prev => ({ ...prev, name: capitalized }));
+                    }}
+                    placeholder="John Smith"
+                    className="w-full px-4 py-3 rounded-xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="contact-email" className="block text-sm font-medium text-text-primary mb-1.5">
+                    Email <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    id="contact-email"
+                    type="email"
+                    value={contact.email}
+                    onChange={(e) => setContact(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="john@example.com"
+                    className="w-full px-4 py-3 rounded-xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label htmlFor="contact-phone" className="block text-sm font-medium text-text-primary mb-1.5">
+                    Phone <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    id="contact-phone"
+                    type="tel"
+                    value={contact.phone}
+                    onChange={(e) => setContact(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="(412) 555-1234"
+                    className="w-full px-4 py-3 rounded-xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
+                  />
+                </div>
+
+                {/* SMS Opt-in */}
+                <button
+                  type="button"
+                  onClick={() => setContact(prev => ({ ...prev, smsOptIn: !prev.smsOptIn }))}
+                  className="w-full flex items-start gap-3 p-4 rounded-xl border border-border bg-surface-overlay hover:border-border-light transition-colors text-left"
+                >
+                  <div className={`w-5 h-5 mt-0.5 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
+                    contact.smsOptIn ? "bg-brand border-brand" : "border-border-light"
+                  }`}>
+                    {contact.smsOptIn && <Check className="w-3 h-3 text-surface" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">Text me updates about my project</p>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Receive scheduling updates &amp; photos via SMS. Msg &amp; data rates may apply. Reply STOP to opt out.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Project Address */}
+                <div>
+                  <label htmlFor="project-address" className="block text-sm font-medium text-text-primary mb-1.5">
+                    Project Address <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    ref={projectAddressRef}
+                    id="project-address"
+                    type="text"
+                    value={contact.projectAddress}
+                    onChange={(e) => setContact(prev => ({ ...prev, projectAddress: e.target.value }))}
+                    placeholder="Start typing an address..."
+                    className="w-full px-4 py-3 rounded-xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
+                  />
+                </div>
+
+                {/* Billing Address Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setContact(prev => ({ ...prev, billingAddressSame: !prev.billingAddressSame }))}
+                  className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  <div className={`w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
+                    contact.billingAddressSame ? "bg-brand border-brand" : "border-border-light"
+                  }`}>
+                    {contact.billingAddressSame && <Check className="w-3 h-3 text-surface" />}
+                  </div>
+                  <span>Billing address same as project address</span>
+                </button>
+
+                {/* Billing Address (if different) */}
+                {!contact.billingAddressSame && (
+                  <div>
+                    <label htmlFor="billing-address" className="block text-sm font-medium text-text-primary mb-1.5">
+                      Billing Address
+                    </label>
+                    <input
+                      ref={billingAddressRef}
+                      id="billing-address"
+                      type="text"
+                      value={contact.billingAddress}
+                      onChange={(e) => setContact(prev => ({ ...prev, billingAddress: e.target.value }))}
+                      placeholder="Start typing an address..."
+                      className="w-full px-4 py-3 rounded-xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 8: Results */}
+          {step === 7 && (
+            <div>
+              <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">
+                Step 8 of 8 — Your Estimate
               </p>
               <h3 className="text-2xl font-bold mb-2">
                 Your estimate is ready.
               </h3>
               <p className="text-text-secondary mb-4">
                 Based on {form.squareFeet.toLocaleString()} sqft,{" "}
-                {form.slope} slope, {form.soil} soil, {form.sun} exposure
+                {form.slope} slope, {form.seedBlend} seed blend
+                {form.grading !== "none" && `, ${form.grading} grading`}
+                {form.soilImport !== "none" &&
+                  `, ${form.soilImport === "bsm" ? "BSM" : `${estimate.topsoilLoads} triaxle load${estimate.topsoilLoads > 1 ? "s" : ""} topsoil`}`}
                 {form.amendments.length > 0 &&
                   `, with ${form.amendments.length} amendment${
                     form.amendments.length > 1 ? "s" : ""
@@ -741,6 +1254,30 @@ export default function ProjectPlanner() {
                 <p className="mt-2 text-sm text-text-muted">
                   Final pricing confirmed after site consultation
                 </p>
+
+                {/* Line item breakdown */}
+                <div className="mt-4 pt-4 border-t border-brand/20 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Hydroseeding</span>
+                    <span className="font-medium">${estimate.hydroseedBase.toLocaleString()}</span>
+                  </div>
+                  {estimate.gradingCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Finish Grading ({form.grading === "minor" ? "minor loosening" : "full reslope"})</span>
+                      <span className="font-medium">${estimate.gradingCost.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {estimate.soilImportCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">
+                        {form.soilImport === "bsm"
+                          ? "BSM (Proganics Dual)"
+                          : `Topsoil (${estimate.topsoilLoads} load${estimate.topsoilLoads > 1 ? "s" : ""} + delivery + spreading)`}
+                      </span>
+                      <span className="font-medium">${estimate.soilImportCost.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Inline Checkout vs Two Paths */}
@@ -763,8 +1300,15 @@ export default function ProjectPlanner() {
                     }}
                   >
                     <CheckoutForm 
-                      amount={Math.round(estimate.low * 0.15)} 
-                      onCancel={() => setClientSecret(null)} 
+                      amount={Math.round(estimate.base * 0.15)} 
+                      onCancel={() => setClientSecret(null)}
+                      onSuccess={() => {
+                        setConfirmation({
+                          type: "deposit",
+                          amount: Math.round(estimate.base * 0.15),
+                          estimateBase: estimate.base,
+                        });
+                      }}
                     />
                   </Elements>
                 </div>
@@ -797,18 +1341,26 @@ export default function ProjectPlanner() {
                     </div>
                     <h4 className="font-bold mb-2">Site Consultation First</h4>
                     <p className="text-sm text-text-secondary mb-4">
-                      Prefer to meet first? Book a $45 on-site consultation.
-                      We&apos;ll walk your property, test your soil, and finalize
-                      your plan in person.
+                      Prefer to meet first? We&apos;ll walk your property and
+                      finalize your plan in person.
                     </p>
-                    <a
-                      href="https://hydroseed.zohobookings.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full py-3 rounded-xl border border-border text-center font-semibold text-text-secondary hover:border-brand hover:text-brand transition-colors text-sm"
-                    >
-                      Book Consultation – $45
-                    </a>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => { setBookingService("walkthrough"); setShowBooking(true); }}
+                        className="block w-full py-3 rounded-xl border border-border text-center font-semibold text-text-secondary hover:border-brand hover:text-brand transition-colors text-sm"
+                      >
+                        Walkthrough Only – $45
+                      </button>
+                      <button
+                        onClick={() => { setBookingService("soil-test"); setShowBooking(true); }}
+                        className="block w-full py-3 rounded-xl border border-border text-center font-semibold text-text-secondary hover:border-brand hover:text-brand transition-colors text-sm"
+                      >
+                        With Soil Test – $170
+                      </button>
+                      <p className="text-xs text-text-muted text-center pt-1">
+                        Soil test includes pH, nutrient analysis &amp; amendment recommendations
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -822,7 +1374,7 @@ export default function ProjectPlanner() {
                   <div className="flex items-center gap-3">
                     <Info className="w-4 h-4 text-brand shrink-0" />
                     <span className="text-sm font-medium">
-                      Why do we charge $45 for a consultation?
+                      Why do we charge for a consultation?
                     </span>
                   </div>
                   {feeExpanded ? (
@@ -842,15 +1394,16 @@ export default function ProjectPlanner() {
                     >
                       <div className="px-5 pb-5 space-y-3 text-sm text-text-secondary leading-relaxed">
                         <p>
-                          We get it — a $45 consultation fee might seem unusual.
+                          We get it — a consultation fee might seem unusual.
                           Here&apos;s the honest truth about why we do it:
                         </p>
                         <p>
                           Every consultation means a real human (our founder,
                           actually) drives to your property, walks the terrain,
-                          tests the soil, and spends 60–90 minutes designing a
-                          custom hydroseeding plan tailored to your exact
-                          conditions.
+                          and spends 60–90 minutes designing a custom
+                          hydroseeding plan tailored to your exact conditions.
+                          The $170 option adds a professional soil test with
+                          pH, nutrient analysis, and amendment recommendations.
                         </p>
                         <p>
                           We used to offer this completely free. The result?
@@ -861,7 +1414,7 @@ export default function ProjectPlanner() {
                           us.
                         </p>
                         <p>
-                          By asking for <strong className="text-text-primary">$45</strong> we ensure
+                          By asking for a small fee we ensure
                           that both you and us have{" "}
                           <strong className="text-text-primary">skin in the game</strong>. It&apos;s
                           about mutual respect for each other&apos;s time and a
@@ -869,21 +1422,49 @@ export default function ProjectPlanner() {
                         </p>
                         <p className="text-brand font-medium">
                           And here&apos;s the thing: if you move forward with
-                          your project, the $45 is credited toward your total.
-                          You literally lose nothing.
+                          your project, the consultation fee is credited toward
+                          your total. You literally lose nothing.
                         </p>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
+
+              <p className="mt-6 text-center text-xs text-text-muted">
+                Not ready to commit just yet?{" "}
+                <button
+                  onClick={() => { setBookingService("phone"); setShowBooking(true); }}
+                  className="underline hover:text-brand transition-colors"
+                >
+                  Schedule a free phone consultation
+                </button>{" "}
+                — no obligation.
+              </p>
             </div>
           )}
         </motion.div>
       </AnimatePresence>
 
+      {/* ─── Phone Consultation Booking Popup ─── */}
+      {showBooking && (
+        <BookingPopup
+          name={contact.name}
+          email={contact.email}
+          phone={contact.phone}
+          address={contact.projectAddress}
+          initialService={bookingService}
+          onClose={() => { setShowBooking(false); setBookingService(undefined); }}
+          onSuccess={(result) => {
+            setShowBooking(false);
+            setBookingService(undefined);
+            setConfirmation(result);
+          }}
+        />
+      )}
+
       {/* ─── Navigation Buttons ─── */}
-      {step < 6 && (
+      {step < 8 && (
         <div className="mt-10">
           <div className="flex items-center justify-between">
             <button
@@ -899,23 +1480,25 @@ export default function ProjectPlanner() {
               disabled={!canAdvance}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-surface text-sm font-semibold hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              {step === 5 ? "See My Estimate" : step === 4 ? "Continue (or Skip)" : "Continue"}
+              {step === 6 ? "See My Estimate" : step === 5 ? "Continue (or Skip)" : "Continue"}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
           {/* Progress encouragement */}
           <p className="text-center text-xs text-text-muted mt-4">
             {step === 0 && "This takes about 2 minutes. No account needed."}
-            {step === 1 && "Great start — 5 quick questions to go."}
-            {step === 2 && "You're doing great — 4 more steps."}
-            {step === 3 && "Almost halfway — 3 more steps."}
-            {step === 4 && "Almost there — 2 more steps."}
-            {step === 5 && "Last step before your estimate!"}
+            {step === 1 && "Great start — 6 quick steps to go."}
+            {step === 2 && "You're doing great — 5 more steps."}
+            {step === 3 && "Nice — 4 more steps."}
+            {step === 4 && "Almost halfway — 4 more steps."}
+            {step === 4 && "Getting close — 3 more steps."}
+            {step === 5 && "Almost there — 2 more steps."}
+            {step === 6 && "Last step before your estimate!"}
           </p>
         </div>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <div className="mt-8 text-center">
           <button
             onClick={() => {
@@ -923,16 +1506,29 @@ export default function ProjectPlanner() {
               setForm({
                 squareFeet: 0,
                 slope: "",
-                soil: "",
-                sun: "",
+                grading: "",
+                soilImport: "none",
+                seedBlend: "",
                 amendments: [],
               });
+              setContact({
+                name: '',
+                email: '',
+                phone: '',
+                smsOptIn: false,
+                projectAddress: '',
+                billingAddressSame: true,
+                billingAddress: '',
+              });
+              setPhotos([]);
             }}
             className="text-sm text-text-muted hover:text-text-secondary transition-colors"
           >
             ← Start over with a new estimate
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

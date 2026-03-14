@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import { Resend } from 'resend';
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { EMAIL_FROM, EMAIL_FROM_BOOKINGS, EMAIL_TO_INTERNAL, emailLayout, detailCard, detailRow, ctaButton, mutedText } from '@/lib/email';
 
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -40,30 +36,63 @@ export async function POST(request: Request) {
 
     // 2. Send Email via Resend
     if (process.env.RESEND_API_KEY) {
-      const emailContent = `
-        <h2>New Quote Request: ${data.projectName || data.companyName || 'Lead'}</h2>
-        <p><strong>Company:</strong> ${data.companyName || 'N/A'}</p>
-        <p><strong>Contact:</strong> ${data.contactName}</p>
-        <p><strong>Email:</strong> ${data.email}</p>
-        <p><strong>Phone:</strong> ${data.phone}</p>
-        <br />
-        <p><strong>Project Name:</strong> ${data.projectName}</p>
-        <p><strong>Location:</strong> ${data.projectLocation}</p>
-        <p><strong>Timeline:</strong> ${data.timeline || 'N/A'}</p>
-        <p><strong>Specifications:</strong></p>
-        <pre>${data.specifications || 'N/A'}</pre>
-        <br />
-        <p><em>Full Data Payload:</em></p>
-        <pre>${JSON.stringify(data, null, 2)}</pre>
-      `;
+      const projectTypes = Array.isArray(data.projectTypes) && data.projectTypes.length > 0
+        ? data.projectTypes.join(', ')
+        : 'N/A';
+      const acreage = data.estimatedAcreage
+        ? `${Number(data.estimatedAcreage).toLocaleString()} ${data.areaUnit || 'acres'}`
+        : 'N/A';
 
+      // Internal notification to Jimmy
       await resend.emails.send({
-        from: 'Quotes <onboarding@resend.dev>', // Update this to your verified Resend domain, e.g., 'Quotes <hello@hydroseed.solutions>'
-        to: ['hello@hydroseed.solutions'],
+        from: EMAIL_FROM_BOOKINGS,
+        to: [EMAIL_TO_INTERNAL],
         subject: `New RFQ: ${data.projectName || 'Lead'} — ${data.companyName || data.contactName}`,
-        html: emailContent,
+        html: emailLayout(`
+          <h2 style="margin:0 0 16px;font-size:20px;">New Commercial RFQ</h2>
+          ${detailCard(
+            detailRow("Company", data.companyName || "N/A") +
+            detailRow("Contact", data.contactName) +
+            detailRow("Email", data.email) +
+            detailRow("Phone", data.phone || "N/A") +
+            detailRow("SMS Opt-In", data.smsOptIn ? "Yes" : "No")
+          )}
+          ${detailCard(
+            detailRow("Project", data.projectName || "N/A") +
+            detailRow("Project Types", projectTypes) +
+            detailRow("Location", data.projectLocation || "N/A") +
+            detailRow("Estimated Area", acreage) +
+            detailRow("Timeline", data.timeline || "N/A") +
+            (data.specifications ? `<p style="margin:8px 0 4px;font-size:14px;"><strong>Specifications:</strong></p><pre style="margin:4px 0;font-size:13px;white-space:pre-wrap;background:#f8f8f8;padding:8px;border-radius:8px;">${data.specifications}</pre>` : "") +
+            (data.additionalNotes ? `<p style="margin:8px 0 4px;font-size:14px;"><strong>Additional Notes:</strong></p><pre style="margin:4px 0;font-size:13px;white-space:pre-wrap;background:#f8f8f8;padding:8px;border-radius:8px;">${data.additionalNotes}</pre>` : "")
+          )}
+        `),
         replyTo: data.email
-      });
+      }).catch(err => console.error('Internal RFQ email error:', err));
+
+      // Customer confirmation
+      if (data.email) {
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: [data.email],
+          subject: "We've Received Your RFQ — Hydroseed Solutions",
+          html: emailLayout(`
+            <h2 style="margin:0 0 8px;font-size:22px;text-align:center;">RFQ Received</h2>
+            <p>Hi ${data.contactName?.split(' ')[0] || 'there'},</p>
+            <p>Thanks for submitting a request for quote. We've received your inquiry and our team will review the details below.</p>
+            ${detailCard(
+              detailRow("Company", data.companyName || "N/A") +
+              detailRow("Project", data.projectName || "N/A") +
+              detailRow("Project Types", projectTypes) +
+              detailRow("Location", data.projectLocation || "N/A") +
+              detailRow("Estimated Area", acreage) +
+              detailRow("Timeline", data.timeline || "N/A")
+            )}
+            <p><strong>What's next?</strong> We typically respond to commercial RFQs within 1 business day with preliminary pricing and a proposed site visit schedule.</p>
+            ${mutedText("Questions? Reply to this email or reach us at hello@hydroseed.solutions.")}
+          `),
+        }).catch(err => console.error('Customer RFQ confirmation email error:', err));
+      }
     } else {
       console.warn('RESEND_API_KEY not configured. Skipping email.');
     }

@@ -92,7 +92,7 @@ export default function Footer() {
                   className="flex items-center gap-2 text-sm text-text-secondary hover:text-brand transition-colors"
                 >
                   <Phone className="w-4 h-4" />
-                  412-866-SEED
+                  724-866-SEED
                 </PhoneLink>
               </li>
             </ul>

@@ -219,7 +219,7 @@ export default function Navigation() {
               <PhoneLink
                 className="text-sm text-text-muted hover:text-brand transition-colors"
               >
-                412-866-SEED
+                724-866-SEED
               </PhoneLink>
             </motion.div>
           </motion.div>

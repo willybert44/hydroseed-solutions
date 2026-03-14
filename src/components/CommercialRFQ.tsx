@@ -17,7 +17,11 @@ import {
   X,
   FileUp,
   Info,
+  CheckCircle,
+  Phone,
+  Mail,
 } from "lucide-react";
+import PhoneLink from "@/components/PhoneLink";
 
 const SiteMeasure = lazy(() => import("./SiteMeasure"));
 
@@ -117,8 +121,12 @@ export default function CommercialRFQ() {
 
   const canAdvance = (() => {
     switch (step) {
-      case 0:
-        return form.companyName.trim() !== "" && form.contactName.trim() !== "" && form.email.trim() !== "";
+      case 0: {
+        const nameParts = form.contactName.trim().split(/\s+/);
+        const nameValid = nameParts.length >= 2 && nameParts.every(p => p.length > 0);
+        const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+        return form.companyName.trim() !== "" && nameValid && emailValid;
+      }
       case 1:
         return form.projectTypes.length > 0;
       case 2:
@@ -174,22 +182,108 @@ export default function CommercialRFQ() {
 
   if (submitted) {
     return (
-      <div className="w-full max-w-3xl mx-auto text-center py-8">
-        <div className="w-16 h-16 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto mb-6">
-          <Check className="w-8 h-8 text-brand" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-3xl mx-auto text-center py-8"
+      >
+        {/* Success icon */}
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", duration: 0.6 }}
+          className="w-20 h-20 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-8"
+        >
+          <CheckCircle className="w-10 h-10 text-brand" />
+        </motion.div>
+
+        <h3 className="text-3xl font-bold mb-3">RFQ Submitted</h3>
+        <p className="text-text-secondary mb-8 max-w-md mx-auto leading-relaxed">
+          We&apos;ve received your request for <strong>{form.projectName || "your project"}</strong> and a confirmation has been sent to <strong>{form.email}</strong>.
+        </p>
+
+        {/* Summary card */}
+        <div className="max-w-md mx-auto p-6 rounded-2xl border border-brand/20 bg-brand/5 mb-8 text-left">
+          <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-3">Submission Summary</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-text-secondary">Company</span>
+              <span className="font-semibold">{form.companyName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-secondary">Contact</span>
+              <span className="font-semibold">{form.contactName}</span>
+            </div>
+            {form.projectName && (
+              <div className="flex justify-between">
+                <span className="text-text-secondary">Project</span>
+                <span className="font-semibold">{form.projectName}</span>
+              </div>
+            )}
+            {form.projectTypes.length > 0 && (
+              <div className="flex justify-between">
+                <span className="text-text-secondary">Type</span>
+                <span className="font-semibold text-right max-w-[200px]">
+                  {form.projectTypes.map(t => projectTypeOptions.find(o => o.value === t)?.label || t).join(", ")}
+                </span>
+              </div>
+            )}
+            {form.timeline && (
+              <div className="flex justify-between">
+                <span className="text-text-secondary">Timeline</span>
+                <span className="font-semibold">{form.timeline}</span>
+              </div>
+            )}
+          </div>
         </div>
-        <h3 className="text-2xl font-bold mb-3">RFQ Submitted</h3>
-        <p className="text-text-secondary mb-6 max-w-md mx-auto">
-          Your email client should have opened with the RFQ details. If it
-          didn&apos;t, you can reach us directly at{" "}
-          <a href="mailto:hello@hydroseed.solutions" className="text-brand hover:underline">
-            hello@hydroseed.solutions
-          </a>
-        </p>
-        <p className="text-sm text-text-muted mb-8">
-          We typically respond to commercial RFQs within 1 business day with
-          preliminary pricing and a proposed site visit schedule.
-        </p>
+
+        {/* Next steps timeline */}
+        <div className="max-w-md mx-auto text-left mb-8">
+          <p className="text-xs font-semibold tracking-widest text-brand uppercase mb-4">What happens next</p>
+          <div className="space-y-0">
+            {[
+              { step: "1", title: "Confirmation Email", desc: `A confirmation with your RFQ details has been sent to ${form.email}.`, timing: "Right now" },
+              { step: "2", title: "Team Review", desc: "Our commercial team will review your project scope, specifications, and any uploaded plans.", timing: "Within 1 business day" },
+              { step: "3", title: "Preliminary Quote", desc: "We'll respond with preliminary pricing and a proposed site visit schedule.", timing: "Within 1–2 business days" },
+              { step: "4", title: "Site Visit & Final Bid", desc: "We'll walk your site, verify conditions, and deliver a formal bid with detailed line items.", timing: "Scheduled together" },
+            ].map((item, i) => (
+              <div key={item.step} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center text-sm font-bold text-brand shrink-0">
+                    {item.step}
+                  </div>
+                  {i < 3 && <div className="w-px flex-1 bg-border my-1" />}
+                </div>
+                <div className="pb-6">
+                  <p className="font-semibold text-text-primary">{item.title}</p>
+                  <p className="text-sm text-text-secondary mt-0.5 leading-relaxed">{item.desc}</p>
+                  <p className="text-xs text-brand font-medium mt-1">{item.timing}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Contact card */}
+        <div className="max-w-md mx-auto p-6 rounded-2xl border border-border bg-surface-raised mb-8">
+          <h3 className="font-bold mb-3">Questions in the meantime?</h3>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <PhoneLink
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border hover:border-brand/40 transition-colors text-sm font-medium"
+            >
+              <Phone className="w-4 h-4 text-brand" />
+              (724) 866-7333
+            </PhoneLink>
+            <a
+              href="mailto:hello@hydroseed.solutions"
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border hover:border-brand/40 transition-colors text-sm font-medium"
+            >
+              <Mail className="w-4 h-4 text-brand" />
+              hello@hydroseed.solutions
+            </a>
+          </div>
+        </div>
+
         <button
           onClick={() => {
             setSubmitted(false);
@@ -209,12 +303,13 @@ export default function CommercialRFQ() {
               additionalNotes: "",
               smsOptIn: false,
             });
+            setPlanFiles([]);
           }}
           className="text-sm text-text-muted hover:text-text-secondary transition-colors"
         >
-          ← Submit another RFQ
+          &larr; Submit another RFQ
         </button>
-      </div>
+      </motion.div>
     );
   }
 
@@ -305,8 +400,11 @@ export default function CommercialRFQ() {
                     <input
                       type="text"
                       value={form.contactName}
-                      onChange={(e) => update({ contactName: e.target.value })}
-                      placeholder="Full name"
+                      onChange={(e) => {
+                        const capitalized = e.target.value.replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+                        update({ contactName: capitalized });
+                      }}
+                      placeholder="First Last"
                       className="w-full px-5 py-4 rounded-2xl bg-surface-overlay border border-border text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand transition-colors"
                     />
                   </div>

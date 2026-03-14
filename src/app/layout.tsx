@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | Hydroseed Solutions",
   },
   description:
-    "Pittsburgh's premier hydroseeding company serving all of Western Pennsylvania. Lawn installation, finish grading, erosion control, slope stabilization & custom seed blends. Free estimates — call 412-866-SEED.",
+    "Pittsburgh's premier hydroseeding company serving all of Western Pennsylvania. Lawn installation, finish grading, erosion control, slope stabilization & custom seed blends. Free estimates — call 724-866-SEED.",
   keywords: [
     "hydroseeding",
     "hydroseeding Pittsburgh",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Hydroseed Solutions | Pittsburgh Hydroseeding",
     description:
-      "Professional hydroseeding, lawn installation & erosion control across Western PA. Free estimates — 412-866-SEED.",
+      "Professional hydroseeding, lawn installation & erosion control across Western PA. Free estimates — 724-866-SEED.",
   },
   robots: {
     index: true,
