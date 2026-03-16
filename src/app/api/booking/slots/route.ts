@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getZohoAccessToken } from "@/lib/zoho";
+import { supabase } from "@/lib/supabase";
 import {
   BUSINESS_HOURS,
   SERVICES,
@@ -61,6 +62,28 @@ export async function GET(req: Request) {
     }));
   } catch (err) {
     console.error("Zoho Calendar unavailable — showing all open slots:", err);
+  }
+
+  // Also exclude times already booked in Supabase
+  if (supabase) {
+    try {
+      const { data: booked } = await supabase
+        .from("bookings")
+        .select("time, service")
+        .eq("date", date)
+        .eq("status", "confirmed");
+      if (booked) {
+        for (const row of booked) {
+          const bookedSvc = SERVICES[row.service];
+          const [bh, bm] = row.time.split(":").map(Number);
+          const start = bh * 60 + bm;
+          const end = start + (bookedSvc?.duration ?? duration);
+          busy.push({ start: start - BUFFER, end: end + BUFFER });
+        }
+      }
+    } catch (err) {
+      console.error("Supabase bookings check failed (continuing):", err);
+    }
   }
 
   // Generate available slots

@@ -432,8 +432,8 @@ function ManageBookingContent() {
                       Reschedule
                     </button>
                     {showCancelConfirm ? (
-                      <div className="p-4 rounded-xl bg-red-50 border border-red-200">
-                        <p className="text-sm text-red-700 mb-3">
+                      <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/50">
+                        <p className="text-sm text-red-300 mb-3">
                           Are you sure you want to cancel this booking?
                         </p>
                         <div className="flex gap-3">
@@ -452,7 +452,7 @@ function ManageBookingContent() {
                           <button
                             onClick={() => setShowCancelConfirm(false)}
                             disabled={cancelling}
-                            className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-surface-overlay transition-colors"
+                            className="flex-1 py-2.5 rounded-xl border border-border text-text-primary text-sm font-medium hover:bg-surface-overlay transition-colors"
                           >
                             Keep Booking
                           </button>
