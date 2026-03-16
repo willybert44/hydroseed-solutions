@@ -82,7 +82,13 @@ export async function POST(req: Request) {
           payload: data,
         },
       ]);
-      if (dbError) console.error("Supabase bookings insert error:", dbError);
+      if (dbError) {
+        console.error("Supabase bookings insert error:", dbError);
+        return NextResponse.json(
+          { error: "Failed to save booking", detail: dbError.message, code: dbError.code },
+          { status: 500 }
+        );
+      }
     }
 
     // 3. Send notification + confirmation emails
