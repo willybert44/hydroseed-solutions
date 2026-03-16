@@ -452,7 +452,7 @@ export default function ProjectPlanner() {
         if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
           await new Promise<void>((resolve) => {
             const s = document.createElement('script');
-            s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+            s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&libraries=places`;
             s.async = true;
             s.onload = () => resolve();
             s.onerror = () => resolve();
