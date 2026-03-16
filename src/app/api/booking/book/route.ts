@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       if (dbError) {
         console.error("Supabase bookings insert error:", dbError);
         return NextResponse.json(
-          { error: "Failed to save booking", detail: dbError.message, code: dbError.code },
+          { error: "Failed to save booking" },
           { status: 500 }
         );
       }
