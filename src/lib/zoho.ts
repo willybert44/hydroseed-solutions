@@ -1,4 +1,4 @@
-/** Shared Zoho OAuth helper — returns a fresh access token */
+/** Shared Zoho OAuth helper — returns a fresh access token via refresh_token grant */
 export async function getZohoAccessToken(): Promise<string> {
   const res = await fetch(
     `https://accounts.zoho.com/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
