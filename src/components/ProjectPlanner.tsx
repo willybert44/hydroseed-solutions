@@ -446,30 +446,30 @@ export default function ProjectPlanner() {
     };
 
     const init = async () => {
+      // Load script if not yet present
       if (typeof google === 'undefined' || !google.maps?.places) {
         const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
         if (!key) return;
         if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
-          await new Promise<void>((resolve) => {
-            const s = document.createElement('script');
-            s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&libraries=places`;
-            s.async = true;
-            s.onload = () => resolve();
-            s.onerror = () => resolve();
-            document.head.appendChild(s);
-          });
-        } else {
-          await new Promise<void>((resolve) => {
-            const poll = setInterval(() => {
-              if (typeof google !== 'undefined' && google.maps?.places) {
-                clearInterval(poll);
-                resolve();
-              }
-            }, 100);
-            setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
-          });
+          const s = document.createElement('script');
+          s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&libraries=places`;
+          s.async = true;
+          document.head.appendChild(s);
         }
+        // Wait for Places library to be ready (loading=async loads libraries asynchronously)
+        await new Promise<void>((resolve) => {
+          const poll = setInterval(() => {
+            if (typeof google !== 'undefined' && google.maps?.places) {
+              clearInterval(poll);
+              resolve();
+            }
+          }, 100);
+          setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
+        });
       }
+      if (cancelled) return;
+      // Wait briefly for DOM refs to be available after animation
+      await new Promise(r => setTimeout(r, 100));
       if (cancelled) return;
       attach(projectAddressRef.current, 'projectAddress');
       attach(billingAddressRef.current, 'billingAddress');
