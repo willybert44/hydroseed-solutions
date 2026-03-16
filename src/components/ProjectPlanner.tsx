@@ -1309,6 +1309,25 @@ export default function ProjectPlanner() {
                           amount: Math.round(estimate.base * 0.15),
                           estimateBase: estimate.base,
                         });
+                        fetch("/api/booking/deposit-confirm", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            projectAddress: contact.projectAddress,
+                            billingAddress: contact.billingAddressSame ? contact.projectAddress : contact.billingAddress,
+                            squareFeet: form.squareFeet,
+                            slope: form.slope,
+                            grading: form.grading,
+                            soilImport: form.soilImport,
+                            seedBlend: form.seedBlend,
+                            amendments: form.amendments,
+                            estimateBase: estimate.base,
+                            depositAmount: Math.round(estimate.base * 0.15),
+                          }),
+                        }).catch((err) => console.error("Deposit confirm email failed:", err));
                       }}
                     />
                   </Elements>

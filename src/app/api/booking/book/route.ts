@@ -94,12 +94,13 @@ export async function POST(req: Request) {
     // 3. Send notification + confirmation emails
     if (resend) {
       const isOnSite = service !== "phone";
+      const subjectIcon = service === "phone" ? "📞" : service === "soil-test" ? "🧪" : "🏠";
       await Promise.all([
         // Business notification
         resend.emails.send({
           from: EMAIL_FROM_BOOKINGS,
           to: [EMAIL_TO_INTERNAL],
-          subject: `New Booking: ${svc.label} — ${name} on ${displayDate}`,
+          subject: `${subjectIcon} ${svc.label} Booked: ${name} — ${displayDate}`,
           html: emailLayout(`
             <h2 style="margin:0 0 16px;font-size:20px;">New ${svc.label} Booking</h2>
             ${detailCard(

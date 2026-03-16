@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       await resend.emails.send({
         from: EMAIL_FROM,
         to: [EMAIL_TO_INTERNAL],
-        subject: `New Residential Lead: ${data.name} — ${Number(data.squareFeet ?? 0).toLocaleString()} sqft`,
+        subject: `📋 New Estimate: ${data.name} — ${Number(data.squareFeet ?? 0).toLocaleString()} sqft`,
         html: emailLayout(`
           <h2 style="margin:0 0 16px;font-size:20px;">New Residential Inquiry</h2>
           ${detailCard(
