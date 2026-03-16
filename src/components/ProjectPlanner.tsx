@@ -426,7 +426,7 @@ export default function ProjectPlanner() {
 
   // Google Places Autocomplete for contact address fields
   useEffect(() => {
-    if (step !== 7) return;
+    if (step !== 6) return;
     let cancelled = false;
 
     const attach = (input: HTMLInputElement | null, field: 'projectAddress' | 'billingAddress') => {
