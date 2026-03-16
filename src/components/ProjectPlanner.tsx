@@ -430,8 +430,8 @@ export default function ProjectPlanner() {
     let cancelled = false;
 
     const attach = (input: HTMLInputElement | null, field: 'projectAddress' | 'billingAddress') => {
-      if (!input || input.dataset.acAttached) return;
-      if (typeof google === 'undefined' || !google.maps?.places) return;
+      if (!input || input.dataset.acAttached) return false;
+      if (typeof google === 'undefined' || !google.maps?.places) return false;
       const ac = new google.maps.places.Autocomplete(input, {
         types: ['address'],
         componentRestrictions: { country: 'us' },
@@ -443,6 +443,7 @@ export default function ProjectPlanner() {
         }
       });
       input.dataset.acAttached = '1';
+      return true;
     };
 
     const init = async () => {
@@ -456,20 +457,17 @@ export default function ProjectPlanner() {
           s.async = true;
           document.head.appendChild(s);
         }
-        // Wait for Places library to be ready (loading=async loads libraries asynchronously)
-        await new Promise<void>((resolve) => {
-          const poll = setInterval(() => {
-            if (typeof google !== 'undefined' && google.maps?.places) {
-              clearInterval(poll);
-              resolve();
-            }
-          }, 100);
-          setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
-        });
       }
-      if (cancelled) return;
-      // Wait briefly for DOM refs to be available after animation
-      await new Promise(r => setTimeout(r, 100));
+      // Poll until Places API is ready AND project address ref is in DOM
+      await new Promise<void>((resolve) => {
+        const poll = setInterval(() => {
+          if (cancelled) { clearInterval(poll); resolve(); return; }
+          const apiReady = typeof google !== 'undefined' && google.maps?.places;
+          const refReady = projectAddressRef.current !== null;
+          if (apiReady && refReady) { clearInterval(poll); resolve(); }
+        }, 150);
+        setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
+      });
       if (cancelled) return;
       attach(projectAddressRef.current, 'projectAddress');
       attach(billingAddressRef.current, 'billingAddress');
