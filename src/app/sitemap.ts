@@ -64,5 +64,42 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...servicePages, ...areaPages];
+  const serviceKeywords = [
+    "lawn-installation",
+    "grass-seeding",
+    "lawn-seeding",
+    "new-lawn-planting",
+    "hydroseeding",
+    "erosion-control",
+    "lawn-replacement",
+    "yard-grading",
+    "finish-grading",
+    "lawn-restoration",
+  ];
+
+  const areaServicePages: MetadataRoute.Sitemap = suburbs.flatMap((suburb) =>
+    serviceKeywords.map((service) => ({
+      url: `${BASE}/areas/${suburb.slug}/${service}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    }))
+  );
+
+  const legalPages: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${BASE}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+  ];
+
+  return [...staticPages, ...servicePages, ...areaPages, ...areaServicePages, ...legalPages];
 }

@@ -22,7 +22,13 @@ const serviceMap: Record<string, { title: string; keyword: string }> = {
   "lawn-installation": { title: "Lawn Installation", keyword: "lawn installation" },
   "grass-seeding": { title: "Grass Seeding", keyword: "grass seeding" },
   "lawn-seeding": { title: "Lawn Seeding", keyword: "lawn seeding" },
-  "new-lawn-planting": { title: "New Lawn Planting", keyword: "new lawn planting" }
+  "new-lawn-planting": { title: "New Lawn Planting", keyword: "new lawn planting" },
+  "hydroseeding": { title: "Hydroseeding", keyword: "hydroseeding" },
+  "erosion-control": { title: "Erosion Control", keyword: "erosion control" },
+  "lawn-replacement": { title: "Lawn Replacement", keyword: "lawn replacement" },
+  "yard-grading": { title: "Yard Grading", keyword: "yard grading" },
+  "finish-grading": { title: "Finish Grading", keyword: "finish grading" },
+  "lawn-restoration": { title: "Lawn Restoration", keyword: "lawn restoration" },
 };
 
 export async function generateStaticParams() {

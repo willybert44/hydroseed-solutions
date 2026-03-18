@@ -31,7 +31,7 @@ export async function generateMetadata({
   const suburb = suburbs.find((s) => s.slug === slug);
   if (!suburb) return {};
   return {
-    title: `Hydroseeding ${suburb.name} PA | Lawn Installation & Erosion Control`,
+    title: `Hydroseeding ${suburb.name} PA | Professional Hydroseed Services`,
     description: `Professional hydroseeding in ${suburb.name}, ${suburb.county} County PA. Lawn installation, finish grading, erosion control & custom seed blends. Serving ${suburb.name} and surrounding Pittsburgh suburbs. Free estimates — 724-866-SEED.`,
     keywords: [
       `hydroseeding ${suburb.name}`,
