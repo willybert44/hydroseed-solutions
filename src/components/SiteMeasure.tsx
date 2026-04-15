@@ -25,19 +25,21 @@ function loadGoogleMaps(): Promise<void> {
       document.head.appendChild(script);
     }
 
-    // Wait for core Google Maps to become available
-    if (typeof google === "undefined" || !google.maps) {
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Google Maps load timeout")), 15000);
-        const poll = setInterval(() => {
-          if (typeof google !== "undefined" && google.maps) {
-            clearInterval(poll);
-            clearTimeout(timeout);
-            resolve();
-          }
-        }, 50);
-      });
-    }
+    // Wait for importLibrary to become available (not just google.maps)
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Google Maps load timeout")), 15000);
+      const poll = setInterval(() => {
+        if (
+          typeof google !== "undefined" &&
+          google.maps &&
+          typeof google.maps.importLibrary === "function"
+        ) {
+          clearInterval(poll);
+          clearTimeout(timeout);
+          resolve();
+        }
+      }, 50);
+    });
 
     // Dynamically load all required libraries
     await Promise.all([

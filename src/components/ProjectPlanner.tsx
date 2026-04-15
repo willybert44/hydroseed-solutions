@@ -457,19 +457,23 @@ export default function ProjectPlanner() {
           s.async = true;
           document.head.appendChild(s);
         }
-        // Wait for Google Maps core to be available
+        // Wait for importLibrary to become available
         await new Promise<void>((resolve) => {
           const poll = setInterval(() => {
             if (cancelled) { clearInterval(poll); resolve(); return; }
-            if (typeof google !== 'undefined' && google.maps) {
+            if (
+              typeof google !== 'undefined' &&
+              google.maps &&
+              typeof google.maps.importLibrary === 'function'
+            ) {
               clearInterval(poll); resolve();
             }
           }, 100);
           setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
         });
         if (cancelled) return;
-        if (typeof google !== 'undefined' && google.maps) {
-          await google.maps.importLibrary("places");
+        if (typeof google !== 'undefined' && google.maps && typeof google.maps.importLibrary === 'function') {
+          await google.maps.importLibrary('places');
         }
       }
       // Wait for project address ref to be in DOM
