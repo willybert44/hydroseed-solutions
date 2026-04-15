@@ -109,12 +109,35 @@ export async function fetchBusyIntervals(
   token: string,
 ): Promise<{ start: number; end: number }[]> {
   const calId = await getCalendarId(token);
-  const offset = getETOffset(date);
-  const dateClean = date.replace(/-/g, "");
+
+  // Zoho Calendar API requires yyyyMMddTHHmmssZ (UTC) format.
+  // Convert local ET day boundaries to UTC.
+  const offset = getETOffset(date); // e.g. "-0400" or "-0500"
+  const sign = offset.startsWith("-") ? -1 : 1;
+  const offH = Number.parseInt(offset.slice(1, 3), 10);
+  const offM = Number.parseInt(offset.slice(3, 5), 10);
+  const offsetMinutes = sign * (offH * 60 + offM);
+
+  // midnight ET in UTC
+  const startUTC = new Date(`${date}T00:00:00Z`);
+  startUTC.setMinutes(startUTC.getMinutes() - offsetMinutes);
+  // 23:59:59 ET in UTC
+  const endUTC = new Date(`${date}T23:59:59Z`);
+  endUTC.setMinutes(endUTC.getMinutes() - offsetMinutes);
+
+  const toZohoUTC = (d: Date) => {
+    const y = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const hh = String(d.getUTCHours()).padStart(2, "0");
+    const mm = String(d.getUTCMinutes()).padStart(2, "0");
+    const ss = String(d.getUTCSeconds()).padStart(2, "0");
+    return `${y}${mo}${dd}T${hh}${mm}${ss}Z`;
+  };
 
   const range = JSON.stringify({
-    start: `${dateClean}T000000${offset}`,
-    end: `${dateClean}T235959${offset}`,
+    start: toZohoUTC(startUTC),
+    end: toZohoUTC(endUTC),
   });
 
   const url = `${ZOHO_CALENDAR_API}/calendars/${encodeURIComponent(calId)}/events?range=${encodeURIComponent(range)}`;

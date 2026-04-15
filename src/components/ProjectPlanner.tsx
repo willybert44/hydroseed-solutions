@@ -453,18 +453,30 @@ export default function ProjectPlanner() {
         if (!key) return;
         if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
           const s = document.createElement('script');
-          s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async&libraries=places`;
+          s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&loading=async`;
           s.async = true;
           document.head.appendChild(s);
         }
+        // Wait for Google Maps core to be available
+        await new Promise<void>((resolve) => {
+          const poll = setInterval(() => {
+            if (cancelled) { clearInterval(poll); resolve(); return; }
+            if (typeof google !== 'undefined' && google.maps) {
+              clearInterval(poll); resolve();
+            }
+          }, 100);
+          setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
+        });
+        if (cancelled) return;
+        if (typeof google !== 'undefined' && google.maps) {
+          await google.maps.importLibrary("places");
+        }
       }
-      // Poll until Places API is ready AND project address ref is in DOM
+      // Wait for project address ref to be in DOM
       await new Promise<void>((resolve) => {
         const poll = setInterval(() => {
           if (cancelled) { clearInterval(poll); resolve(); return; }
-          const apiReady = typeof google !== 'undefined' && google.maps?.places;
-          const refReady = projectAddressRef.current !== null;
-          if (apiReady && refReady) { clearInterval(poll); resolve(); }
+          if (projectAddressRef.current !== null) { clearInterval(poll); resolve(); }
         }, 150);
         setTimeout(() => { clearInterval(poll); resolve(); }, 10000);
       });

@@ -6,30 +6,48 @@ import { MapPin, Pencil, RotateCcw, Undo2, X, Check } from "lucide-react";
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const GOOGLE_MAPS_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "54d5456fac6b4d0b8a8c5da7";
 
-/* ─── Script loader (callback-promise, loading=async) ─── */
+/* ─── Script loader (importLibrary-based for loading=async) ─── */
 let mapsLoadPromise: Promise<void> | null = null;
 
 function loadGoogleMaps(): Promise<void> {
   if (mapsLoadPromise) return mapsLoadPromise;
-  if (typeof google !== "undefined" && google.maps?.marker) return Promise.resolve();
+  if (typeof google !== "undefined" && google.maps?.marker?.AdvancedMarkerElement) {
+    return Promise.resolve();
+  }
 
-  mapsLoadPromise = new Promise((resolve, reject) => {
-    const callbackName = "__initGoogleMaps";
-    (globalThis as Record<string, unknown>)[callbackName] = () => {
-      delete (globalThis as Record<string, unknown>)[callbackName];
-      resolve();
-    };
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&loading=async&libraries=places,drawing,geometry,marker&callback=${callbackName}`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => {
-      mapsLoadPromise = null;
-      reject(new Error("Failed to load Google Maps"));
-    };
-    document.head.appendChild(script);
-  });
+  mapsLoadPromise = (async () => {
+    // Add bootstrap script if no Google Maps script exists yet
+    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&loading=async`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
 
+    // Wait for core Google Maps to become available
+    if (typeof google === "undefined" || !google.maps) {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Google Maps load timeout")), 15000);
+        const poll = setInterval(() => {
+          if (typeof google !== "undefined" && google.maps) {
+            clearInterval(poll);
+            clearTimeout(timeout);
+            resolve();
+          }
+        }, 50);
+      });
+    }
+
+    // Dynamically load all required libraries
+    await Promise.all([
+      google.maps.importLibrary("places"),
+      google.maps.importLibrary("geometry"),
+      google.maps.importLibrary("marker"),
+    ]);
+  })();
+
+  mapsLoadPromise.catch(() => { mapsLoadPromise = null; });
   return mapsLoadPromise;
 }
 
@@ -437,9 +455,9 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: Readonly<SiteMe
               {!isDrawing && !measuredArea && (
                 <button
                   onClick={startDrawing}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg transition-colors bg-brand text-surface hover:bg-brand-light"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-base font-bold shadow-xl transition-all bg-brand text-surface hover:bg-brand-light hover:scale-105 animate-pulse hover:animate-none ring-2 ring-brand/50 ring-offset-2 ring-offset-black/50"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-5 h-5" />
                   Start Measuring
                 </button>
               )}
