@@ -65,6 +65,7 @@ function createMarkerContent(radius: number, isFirst: boolean): HTMLElement {
   el.style.width = `${size}px`;
   el.style.height = `${size}px`;
   el.style.cursor = isFirst ? "pointer" : "default";
+  el.style.transition = "transform 0.15s ease";
   el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${radius}" cy="${radius}" r="${radius - 1}" fill="#00c898" stroke="#fff" stroke-width="2"/>
   </svg>`;
@@ -279,21 +280,29 @@ export default function SiteMeasure({ onAreaMeasured, onClose }: Readonly<SiteMe
         zIndex: isFirst ? 100 : 10,
       });
 
-      if (isFirst && marker.element) {
-        marker.element.addEventListener("mouseenter", () => {
-          if (pointsRef.current.length >= 3) {
-            marker.content = createMarkerContent(14, true);
-            marker.title = "Click to finish measurements";
-          }
-        });
-        marker.element.addEventListener("mouseleave", () => {
-          marker.content = createMarkerContent(10, true);
-          marker.title = "";
-        });
-        marker.element.addEventListener("click", (evt) => {
-          evt.stopPropagation();
+      if (isFirst) {
+        // Use gmp-click on the marker itself — works reliably with AdvancedMarkerElement
+        marker.addListener("gmp-click", () => {
           if (pointsRef.current.length >= 3) finishDrawing();
         });
+
+        // Hover effect: scale the existing SVG instead of replacing content
+        const applyHover = () => {
+          if (pointsRef.current.length >= 3 && marker.content instanceof HTMLElement) {
+            marker.content.style.transform = "scale(1.4)";
+            marker.content.style.cursor = "pointer";
+          }
+        };
+        const removeHover = () => {
+          if (marker.content instanceof HTMLElement) {
+            marker.content.style.transform = "";
+          }
+        };
+
+        if (marker.element) {
+          marker.element.addEventListener("mouseenter", applyHover);
+          marker.element.addEventListener("mouseleave", removeHover);
+        }
       }
 
       markersRef.current.push(marker);
